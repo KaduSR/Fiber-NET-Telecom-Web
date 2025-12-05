@@ -25,7 +25,7 @@ export default defineConfig({
       "/api-proxy": {
         target: "https://api.centralfiber.online",
         changeOrigin: true,
-        secure: false,
+        secure: true,
         rewrite: (path) => path.replace(/^\/api-proxy/, ""),
       },
     },
