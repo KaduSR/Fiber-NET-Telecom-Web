@@ -30,6 +30,26 @@ const bytesToGB = (bytes: number) => {
     return parseFloat((bytes / (1024 * 1024 * 1024)).toFixed(2));
 };
 
+const downloadBase64Pdf = (base64Data: string, fileName: string) => {
+    try {
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'application/pdf' });
+        const link = document.createElement('a');
+        link.href = window.URL.createObjectURL(blob);
+        link.download = fileName;
+        link.click();
+        window.URL.revokeObjectURL(link.href);
+    } catch (e) {
+        console.error("Erro ao converter PDF", e);
+        alert("Erro ao processar o arquivo PDF.");
+    }
+};
+
 // === SUB-COMPONENT: CONSUMPTION CHART ===
 const ConsumptionChart: React.FC<{ history?: Consumo['history'] }> = ({ history }) => {
     const [period, setPeriod] = useState<'daily' | 'monthly'>('daily');
@@ -160,6 +180,7 @@ const ClientArea: React.FC = () => {
     const [activePixCode, setActivePixCode] = useState('');
     const [isPixCopied, setIsPixCopied] = useState(false);
     const [copiedBarcodeId, setCopiedBarcodeId] = useState<string | null>(null);
+    const [downloadingInvoiceId, setDownloadingInvoiceId] = useState<number | string | null>(null);
     const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('aberto');
     const [passwordChangeStatus, setPasswordChangeStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const [showNewPass, setShowNewPass] = useState(false);
@@ -368,6 +389,23 @@ const ClientArea: React.FC = () => {
             chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
         }
     }, [chatMessages, activeTab]);
+
+    const handleImprimirBoleto = async (id: number | string) => {
+        setDownloadingInvoiceId(id);
+        try {
+            const response = await apiService.imprimirBoleto(id);
+            if (response.base64_document) {
+                downloadBase64Pdf(response.base64_document, `Fatura-${id}.pdf`);
+            } else {
+                alert("O documento do boleto não está disponível.");
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Erro ao baixar o boleto.");
+        } finally {
+            setDownloadingInvoiceId(null);
+        }
+    };
 
     const handleCopy = (text: string, id: string) => {
         navigator.clipboard.writeText(text);
@@ -692,9 +730,35 @@ const ClientArea: React.FC = () => {
                                     </div>
                                     <div className="space-y-3">
                                         {(dashboardData?.faturas || []).filter(inv => invoiceStatusFilter === 'todas' ? true : (inv.status === 'A' ? 'aberto' : 'pago') === invoiceStatusFilter).map(invoice => (
-                                            <div key={invoice.id} className="bg-neutral-900 border border-white/10 rounded-xl p-4 flex justify-between items-center">
-                                                 <div><p className="font-bold text-white">R$ {invoice.valor}</p><p className="text-xs text-gray-500">{invoice.data_vencimento}</p></div>
-                                                 <div className="flex gap-2">{invoice.linha_digitavel && <Button variant="secondary" onClick={() => handleCopy(invoice.linha_digitavel!, String(invoice.id))} className="!py-1 !px-3 !text-xs">Copiar</Button>}</div>
+                                            <div key={invoice.id} className="bg-neutral-900 border border-white/10 rounded-xl p-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+                                                    <div>
+                                                        <p className="font-bold text-white">R$ {invoice.valor}</p>
+                                                        <p className="text-xs text-gray-500">Venc: {invoice.data_vencimento}</p>
+                                                    </div>
+                                                    
+                                                    <div className="flex gap-2">
+                                                        {/* Botão de PDF */}
+                                                        <Button 
+                                                            variant="secondary" // ou outline, conforme seu design
+                                                            onClick={() => handleImprimirBoleto(invoice.id)}
+                                                            disabled={downloadingInvoiceId === invoice.id}
+                                                            className="!py-1 !px-3 !text-xs gap-2"
+                                                        >
+                                                            {downloadingInvoiceId === invoice.id ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                                                            PDF
+                                                        </Button>
+
+                                                        {/* Botão de Linha Digitável (Existente) */}
+                                                        {invoice.linha_digitavel && (
+                                                            <Button 
+                                                                variant="secondary" 
+                                                                onClick={() => handleCopy(invoice.linha_digitavel!, String(invoice.id))} 
+                                                                className="!py-1 !px-3 !text-xs"
+                                                            >
+                                                                Copiar Código
+                                                            </Button>
+                                                        )}
+                                                    </div>
                                             </div>
                                         ))}
                                     </div>

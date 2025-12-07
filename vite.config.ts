@@ -22,11 +22,10 @@ export default defineConfig({
   server: {
     host: true,
     proxy: {
-      "/api-proxy": {
-        target: "https://api.centralfiber.online",
+      '/api': {
+        target: 'http://localhost:3333',
         changeOrigin: true,
-        secure: true,
-        rewrite: (path) => path.replace(/^\/api-proxy/, ""),
+        secure: false,
       },
     },
   },
