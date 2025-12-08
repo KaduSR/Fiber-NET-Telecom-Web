@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ExternalLink, Newspaper, RefreshCw, Search, X, Wifi, Image as ImageIcon } from 'lucide-react';
 import Button from './Button';
@@ -30,7 +29,8 @@ const RSS_SOURCES = [
     { url: 'https://adrenaline.com.br/rss', name: 'Adrenaline' }
 ];
 
-const CACHE_KEY = 'fiber_news_cache_v3'; 
+// CACHE KEY ATUALIZADA (Limpeza de Cache)
+const CACHE_KEY = 'fiber_news_v2025_mascot_restore'; 
 
 // === SUB-COMPONENT PARA IMAGEM OTIMIZADA ===
 const NewsImage: React.FC<{ src: string; alt: string }> = ({ src, alt }) => {
@@ -85,6 +85,7 @@ const NewsSection: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   
   // === OTIMIZAÇÃO DE PERFORMANCE: LAZY STATE INITIALIZATION ===
+  // Carrega do cache IMEDIATAMENTE na inicialização
   const [news, setNews] = useState<NewsArticle[]>(() => {
       try {
           const cached = localStorage.getItem(CACHE_KEY);
@@ -98,6 +99,7 @@ const NewsSection: React.FC = () => {
       return [];
   });
 
+  // Se já temos notícias do cache (news.length > 0), não mostramos loading
   const [loading, setLoading] = useState(news.length === 0);
   const [isBackgroundUpdating, setIsBackgroundUpdating] = useState(false);
   
@@ -118,6 +120,7 @@ const NewsSection: React.FC = () => {
     if (forceRefresh) {
         setLoading(true);
     } else {
+        // Se já temos notícias, mostramos indicador de fundo, senão loading principal
         if (news.length > 0) setIsBackgroundUpdating(true);
         else setLoading(true);
     }
@@ -193,6 +196,7 @@ const NewsSection: React.FC = () => {
             setNews(finalNews);
             saveToCache(finalNews);
         } else if (news.length === 0) {
+            // Se falhou tudo e não temos nada, usa fallback
             setNews(FALLBACK_NEWS);
         }
 

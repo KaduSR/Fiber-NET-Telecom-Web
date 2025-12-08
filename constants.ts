@@ -5,7 +5,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Início', href: 'home' },
   { label: 'Planos', href: '#planos' },
   { label: 'SpeedTest', href: 'https://www.speedtest.net/' },
-  { label: 'Status', href: 'status' },
+  { label: 'Status', href: 'https://www.downdetector.com.br' },
   { label: '2ª Via', href: 'segunda-via' },
   { label: 'Notícias', href: 'news' },
   { label: 'Ajuda', href: 'help' },
