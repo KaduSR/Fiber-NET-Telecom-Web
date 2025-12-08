@@ -246,16 +246,16 @@ class ApiService {
 
   /**
    * Busca o Base64 do PDF da fatura (boleto)
-   * @param id ID da fatura
+   * Rota alinhada com o backend: /boletos/:id/segunda-via
    */
-  async imprimirBoleto(id: number | string): Promise<{ base64_document: string }> {
-      // Ajuste a rota para corresponder à sua API (ex: /faturas/:id/imprimir)
-      // Assumindo que você criou uma rota no backend que chama o método financeiro.imprimirBoleto
-      const url = `/faturas/${id}/imprimir`; 
-      
-      return this.request<{ base64_document: string }>(url, {
-          method: 'GET'
-      });
+  async imprimirBoleto(
+    id: number | string
+  ): Promise<{ base64_document: string }> {
+    const url = `/boletos/${id}/segunda-via`;
+
+    return this.request<{ base64_document: string }>(url, {
+      method: "GET",
+    });
   }
 
   // Auxiliar para formatar segundos em dias/horas

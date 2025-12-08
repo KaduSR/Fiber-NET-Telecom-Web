@@ -34,12 +34,12 @@ export const API_BASE_URL = getApiBaseUrl();
 export const ENDPOINTS = {
   LOGIN: `/auth/login`,
   DASHBOARD: `/dashboard`,
-  CHANGE_PASSWORD: `/senha/trocar-senha`,
+  CHANGE_PASSWORD: `/senha/trocar`,
   RECOVERY: `/senha/recuperar`,
   INVOICES: `/faturas`,
   SERVICE_STATUS: `/status`,
   SPEEDTEST_RUN: `/speedtest`,
   // Nova rota dinâmica para PIX
-  GET_PIX: (id: number | string) => `/faturas/${id}/pix`, 
+  GET_PIX: (id: number | string) => `/faturas/${id}/pix`,
   LOGIN_ACTION: (id: string | number, action: string) => `/logins/${id}/${action}`,
 };
