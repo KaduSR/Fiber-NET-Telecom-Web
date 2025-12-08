@@ -26,7 +26,7 @@ export const getApiBaseUrl = () => {
   }
   
   // Em produção (Build final na UOLHost), usamos a URL completa do backend.
-  return 'https://localhost:3333/api'; 
+  return 'https://localhost:3333/api';
 };
 
 export const API_BASE_URL = getApiBaseUrl();
@@ -34,8 +34,8 @@ export const API_BASE_URL = getApiBaseUrl();
 export const ENDPOINTS = {
   LOGIN: `/auth/login`,
   DASHBOARD: `/dashboard`,
-  CHANGE_PASSWORD: `/auth/trocar-senha`,
-  RECOVERY: `/auth/recuperar-senha`, 
+  CHANGE_PASSWORD: `/senha/trocar-senha`,
+  RECOVERY: `/senha/recuperar`,
   INVOICES: `/faturas`,
   SERVICE_STATUS: `/status`,
   SPEEDTEST_RUN: `/speedtest`,
