@@ -26,7 +26,7 @@ export const getApiBaseUrl = () => {
   }
   
   // Em produção (Build final na UOLHost), usamos a URL completa do backend.
-  return 'https://api.centralfiber.online/api'; 
+  return 'https://localhost:3333/api'; 
 };
 
 export const API_BASE_URL = getApiBaseUrl();
