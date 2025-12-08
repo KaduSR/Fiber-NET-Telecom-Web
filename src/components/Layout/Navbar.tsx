@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Menu, X, Headphones, FileText } from "lucide-react";
-import { NAV_ITEMS } from "../../constants";
-import Button from "./Button";
-import FiberNetLogo from "./FiberNetLogo";
+import { NAV_ITEMS } from "../../../constants";
+import Button from "../Button";
+import FiberNetLogo from "../FiberNetLogo";
 
 interface NavbarProps {
   onNavigate: (page: string) => void;

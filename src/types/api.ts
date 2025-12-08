@@ -57,6 +57,7 @@ export interface NotaFiscal {
   link_pdf?: string;
 }
 
+// === TIPOS DE CONSUMO ===
 export interface ConsumoDaily {
   data: string;
   download_bytes: number;
@@ -81,6 +82,7 @@ export interface Consumo {
   history: ConsumoHistory;
 }
 
+// === TIPOS DE IA ===
 export interface AiInsight {
   type: "risk" | "positive" | "neutral";
   title: string;
@@ -94,6 +96,20 @@ export interface AiAnalysis {
   insights: AiInsight[];
 }
 
+// === TIPOS DE PLANOS (NOVO) ===
+export interface Plan {
+  id: number | string;
+  speed: string;
+  price: string;
+  cents: string;
+  period: string; // ex: "/mês"
+  fullPrice?: string; // Preço sem desconto
+  highlight?: boolean; // Se é o plano destaque
+  description?: string;
+  benefits: string[];
+}
+
+// === RESPOSTAS DA API ===
 export interface DashboardResponse {
   clientes: Cliente[];
   contratos: Contrato[];
@@ -120,4 +136,5 @@ export interface ChatMessage {
   sender: "user" | "bot";
   text: string;
   timestamp: Date;
+  sources?: { title: string; url: string }[];
 }

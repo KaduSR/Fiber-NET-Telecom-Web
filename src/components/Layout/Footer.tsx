@@ -1,8 +1,8 @@
 
 import React from 'react';
 import { Instagram, MessageCircle, ChevronRight, Star } from 'lucide-react';
-import { CONTACT_INFO } from '../../constants';
-import FiberNetLogo from './FiberNetLogo';
+import { CONTACT_INFO } from '../../../constants';
+import FiberNetLogo from '../FiberNetLogo';
 
 interface FooterProps {
   onNavigate?: (page: string) => void;

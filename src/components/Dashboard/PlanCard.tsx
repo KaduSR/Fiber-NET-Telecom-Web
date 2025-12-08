@@ -1,5 +1,6 @@
 import React from "react";
-import { Plan } from "../../types";
+// Correção: Caminho relativo ajustado para sair de 'components' e entrar em 'types'
+import { Plan } from "../../types/api";
 import {
   Check,
   Wifi,
@@ -11,7 +12,8 @@ import {
   Wrench,
   Tv,
 } from "lucide-react";
-import Button from "./Button";
+// Correção: Button está na mesma pasta, então é './'
+import Button from "../Button";
 
 interface PlanCardProps {
   plan: Plan;

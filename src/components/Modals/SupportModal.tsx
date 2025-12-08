@@ -6,9 +6,9 @@ import {
   Headphones,
   FileText,
 } from "lucide-react";
-import Button from "./Button";
-import { CONTACT_INFO } from "../../constants";
-import FiberNetTextLogo from "./FiberNetTextLogo";
+import Button from "../Button";
+import { CONTACT_INFO } from "../../../constants";
+import FiberNetTextLogo from "../FiberNetTextLogo";
 
 interface SupportModalProps {
   isOpen: boolean;

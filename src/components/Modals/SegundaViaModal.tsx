@@ -11,8 +11,8 @@ import {
   AlertCircle,
   CreditCard,
 } from "lucide-react";
-import Button from "./Button";
-import { ENDPOINTS, API_BASE_URL } from "../config";
+import Button from "../Button";
+import { ENDPOINTS, API_BASE_URL } from "../../config";
 
 interface SegundaViaModalProps {
   isOpen: boolean;

@@ -30,11 +30,11 @@ import {
   ThumbsUp,
   Printer,
 } from "lucide-react";
-import Button from "./Button";
-import { DashboardResponse, Consumo, Fatura } from "../types/api";
-import { apiService } from "../services/apiService";
-import AIInsights from "./AIInsights";
-import { ChatWidget } from "./Chatbot/ChatWidget";
+import Button from "../Button";
+import { DashboardResponse, Consumo, Fatura } from "../../types/api";
+import { apiService } from "../../services/apiService";
+import AIInsights from "../AIInsights";
+import { ChatWidget } from "../Chatbot/ChatWidget";
 
 const DASH_CACHE_KEY = "fiber_dashboard_cache_v5_forced";
 

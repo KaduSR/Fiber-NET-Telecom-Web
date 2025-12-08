@@ -1,5 +1,5 @@
 import React from 'react';
-import FiberNetTextLogo from './FiberNetTextLogo';
+import FiberNetTextLogo from '../FiberNetTextLogo';
 
 const Hero: React.FC = () => {
   return (
