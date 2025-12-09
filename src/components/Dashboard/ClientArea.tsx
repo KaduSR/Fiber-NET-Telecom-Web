@@ -683,7 +683,7 @@ const ClientArea: React.FC = () => {
   // --- MAIN APP RENDER (LAYOUT FIXADO & ZOOM 90%) ---
   return (
     <div
-      className="h-screen w-full bg-black flex flex-col overflow-hidden"
+      className=" w-full bg-black flex flex-col overflow-hidden"
       style={{ zoom: "90%" }}
     >
       {/* Header Fixo */}
@@ -717,7 +717,7 @@ const ClientArea: React.FC = () => {
       </header>
 
       <div className="flex-1 overflow-hidden">
-        <div className="h-70 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row gap-6 lg:gap-8 pt-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row gap-6 lg:gap-8 pt-6">
           {/* Sidebar Fixa (Desktop) */}
           <aside className="hidden lg:flex flex-col w-64 shrink-0 h-full overflow-y-auto pb-4 gap-2">
             <div className="bg-fiber-card border border-white/10 rounded-2xl p-4 space-y-2">
@@ -776,10 +776,10 @@ const ClientArea: React.FC = () => {
               <>
                 {/* 1. Abas COM Scroll */}
                 {activeTab !== "ai_support" && (
-                  <div className="flex-1 overflow-y-auto pb-20 scrollbar-thin scrollbar-thumb-white/10 pr-2">
-                    <div className="bg-fiber-card border border-white/10 rounded-2xl p-6 min-h-full animate-fadeIn">
+                  <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 pr-2">
+                    <div className="bg-fiber-card border border-white/10 rounded-2xl p-6 animate-fadeIn mb-8">
                       {activeTab === "dashboard" && dashboardData && (
-                        <div className="space-y-8 pb-10">
+                        <div className="space-y-8">
                           <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
                             <LayoutDashboard className="text-fiber-orange" />{" "}
                             Visão Geral
@@ -1045,7 +1045,7 @@ const ClientArea: React.FC = () => {
                       )}
 
                       {activeTab === "invoices" && (
-                        <div className="pb-10">
+                        <div className="pb-8">
                           <h2 className="text-2xl font-bold text-white mb-6">
                             Todas as Faturas
                           </h2>
@@ -1142,7 +1142,7 @@ const ClientArea: React.FC = () => {
                       )}
 
                       {activeTab === "consumption" && (
-                        <div>
+                        <div className="pb-8">
                           <h2 className="text-2xl font-bold text-white mb-4">
                             Extrato de Uso
                           </h2>
@@ -1153,7 +1153,7 @@ const ClientArea: React.FC = () => {
                       )}
 
                       {activeTab === "contracts" && dashboardData && (
-                        <div className="space-y-8">
+                        <div className="space-y-8 pb-8">
                           {dashboardData.contratos
                             .filter((c: any) => c.status === "A")
                             .map((contrato: any) => (
