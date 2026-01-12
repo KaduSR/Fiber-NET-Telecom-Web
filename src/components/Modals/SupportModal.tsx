@@ -5,6 +5,7 @@ import {
   MessageCircle,
   PhoneForwarded,
   X,
+  FileAxis3d,
 } from "lucide-react";
 import React, { useEffect } from "react";
 import Button from "../Button";
@@ -35,21 +36,23 @@ const SupportModal: React.FC<SupportModalProps> = ({
 
   if (!isOpen) return null;
 
-  // const handleClientAreaClick = () => {
-  //   if (onNavigate) {
-  //     onNavigate("client-area");
-  //   }
-  //   onClose();
-  // };
+  const handleClientAreaClick = () => {
+    if (onNavigate) {
+      onNavigate("client-area");
+    }
+    onClose();
+  };
 
   const handleSegundaViaClick = () => {
-    // if (onOpenSegundaVia) {
-    //   onOpenSegundaVia();
-    // }
-    // onClose();
+    if (onOpenSegundaVia) {
+      onOpenSegundaVia();
+    }
+    onClose();
+  };
+
+  const handlePhoneclick = () => {
     const phoneClean = CONTACT_INFO.phone.replace(/\D/g, "");
     window.open(`tel:${phoneClean}`, "_blank");
-    onClose();
   };
 
   return (
@@ -126,6 +129,28 @@ const SupportModal: React.FC<SupportModalProps> = ({
           {/* 2ª Via Rápida Option */}
           <button
             onClick={handleSegundaViaClick}
+            className="w-full flex items-center justify-between p-4 bg-neutral-800 hover:bg-fiber-orange/10 border border-white/5 hover:border-fiber-orange/50 rounded-xl group transition-all focus:outline-none focus:ring-2 focus:ring-fiber-orange"
+            aria-label="Acessar 2ª Via de Boleto"
+          >
+            <div className="flex items-center gap-4">
+              <div className="bg-fiber-orange/20 p-3 rounded-full text-fiber-orange group-hover:scale-110 transition-transform">
+                <FileAxis3d size={24} aria-hidden="true" />
+              </div>
+              <div className="text-left">
+                <div className="text-white font-bold">2ª via de boleto</div>
+                <div className="text-xs text-gray-400">
+                  segunda via de boleto
+                </div>
+              </div>
+            </div>
+            <ExternalLink
+              size={16}
+              className="text-gray-500 group-hover:text-fiber-orange"
+              aria-hidden="true"
+            />
+          </button>
+          <button
+            onClick={handlePhoneclick}
             className="w-full flex items-center justify-between p-4 bg-neutral-800 hover:bg-fiber-orange/10 border border-white/5 hover:border-fiber-orange/50 rounded-xl group transition-all focus:outline-none focus:ring-2 focus:ring-fiber-orange"
             aria-label="Acessar 2ª Via de Boleto"
           >

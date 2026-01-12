@@ -5,13 +5,11 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Planos", href: "#planos" },
   { label: "SpeedTest", href: "https://www.speedtest.net/" },
   { label: "Status", href: "https://www.downdetector.com.br" },
-  {
-    label: "2ª Via",
-    href: "https://centralfiber.online/central_assinante_web/login",
-  },
-  // {label: "2ª Via",
-  //   href:"segunda-via"
+  // {
+  //   label: "2ª Via",
+  //   href: "https://centralfiber.online/central_assinante_web/login",
   // },
+  { label: "2ª Via", href: "segunda-via" },
   { label: "Notícias", href: "news" },
   { label: "Ajuda", href: "help" },
   { label: "Guia", href: "client-guide" },

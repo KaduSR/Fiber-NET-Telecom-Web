@@ -19,7 +19,8 @@
     "paths": {
       "@/*": ["./*"],
       "@shared/*": ["../shared/*"]
-    }
+    },
+    "types": ["vite/client"]
   },
   "include": ["**/*.ts", "**/*.tsx", "../shared"],
   "exclude": ["node_modules"]
