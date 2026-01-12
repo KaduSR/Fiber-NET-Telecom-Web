@@ -48,6 +48,7 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
 
   const [pixModalOpen, setPixModalOpen] = useState(false);
   const [activePixCode, setActivePixCode] = useState("");
+  const [activePixImage, setActivePixImage] = useState("");
   const [isPixCopied, setIsPixCopied] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -61,6 +62,34 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
       setLoading(false);
     }
   }, [isOpen]);
+  const formatarDataVencimento = (dataString?: string) => {
+    if (!dataString) return "--/--/----";
+    if (dataString.includes("/")) {
+      const [dia, mes, ano] = dataString.split("-");
+      return `${dia}/${mes}/${ano}`;
+    }
+    return dataString;
+  };
+
+  const calcularDiasVencimento = (dataVencimento?: string): number => {
+    if (!dataVencimento) return 0;
+
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    let dataVenc: Date;
+    if (dataVencimento.includes("/")) {
+      const [dia, mes, ano] = dataVencimento.split("/").map(Number);
+      dataVenc = new Date(ano, mes - 1, dia);
+    } else {
+      dataVenc = new Date(dataVencimento);
+    }
+
+    const diffTime = hoje.getTime() - dataVenc.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    return diffDays;
+  };
 
   const formatarCpfCnpj = (valor: string) => {
     const numeros = valor.replace(/\D/g, "");
@@ -112,7 +141,16 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
       const data = await response.json();
 
       if (data.boletos && data.boletos.length > 0) {
-        setBoletos(data.boletos);
+        const boletosOrdenados = data.boletos.sort((a: Boleto, b: Boleto) => {
+          const dataA = a.data_vencimento
+            ? new Date(a.data_vencimento)
+            : new Date();
+          const dataB = b.data_vencimento
+            ? new Date(b.data_vencimento)
+            : new Date();
+          return dataB.getTime() - dataA.getTime();
+        });
+        setBoletos(boletosOrdenados);
         setResumo(data.resumo);
       } else {
         setError("Nenhuma fatura em aberto encontrada.");
@@ -160,8 +198,9 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const abrirPixModal = (codigo: string) => {
+  const abrirPixModal = (codigo: string, imagem?: string | undefined) => {
     setActivePixCode(codigo);
+    setActivePixImage(imagem || "");
     setPixModalOpen(true);
     setIsPixCopied(false);
   };
@@ -322,8 +361,18 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
                               Vencimento
                             </div>
                             <div className="text-lg font-bold text-white">
-                              {boleto.data_vencimento}
+                              {formatarDataVencimento(boleto.data_vencimento)}
                             </div>
+                            {calcularDiasVencimento(boleto.data_vencimento) >
+                              0 &&
+                              boleto.status !== "Pago" && (
+                                <span className="text-xs font-bold text-red-400 block mt-1">
+                                  {calcularDiasVencimento(
+                                    boleto.data_vencimento
+                                  )}{" "}
+                                  dias
+                                </span>
+                              )}
                           </div>
                           <div>
                             <div className="text-xs text-gray-500 uppercase">
@@ -339,13 +388,18 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
                       {/* Botões de Ação - Agora com TYPE=BUTTON para não recarregar */}
                       <div className="flex flex-col gap-3 min-w-[200px]">
                         {/* Botão PIX */}
-                        {boleto.pix_txid && (
+                        {(boleto.pix_txid || boleto.pix_qrcode) && (
                           <button
-                            type="button" // IMPORTANTE
-                            onClick={() => abrirPixModal(boleto.pix_txid!)}
+                            type="button"
+                            onClick={() =>
+                              abrirPixModal(
+                                boleto.pix_txid || boleto.pix_qrcode || "",
+                                boleto.pix_qrcode
+                              )
+                            }
                             className="flex items-center justify-center gap-2 px-4 py-3 bg-fiber-green/10 text-fiber-green rounded-lg font-bold text-sm hover:bg-fiber-green/20 transition-all"
                           >
-                            <QrCode size={18} /> PIX Copia e Cola
+                            <QrCode size={18} /> Pagar com PIX
                           </button>
                         )}
 
@@ -418,8 +472,20 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
             <h3 className="text-xl font-bold text-white text-center mb-4">
               Pagamento PIX
             </h3>
-            <div className="bg-white p-4 rounded-lg mx-auto w-fit mb-4">
-              <QrCode size={200} className="text-neutral-900" />
+            <div className="bg-white p-4 rounded-lg mx-auto w-fit mb-4 min-h-[232px] flex items-center justify-center">
+              {activePixImage ? (
+                <img
+                  src={
+                    activePixImage.startsWith("data.image")
+                      ? activePixImage
+                      : `data:image/png;base64,${activePixImage}`
+                  }
+                  alt="QR Code"
+                  className="w-[200px] h-[200px] object-contain"
+                />
+              ) : (
+                <QrCode size={200} className="text-neutral-900 opacity-20" />
+              )}
             </div>
             <div className="bg-neutral-900 p-3 rounded-lg mb-4 max-h-20 overflow-y-auto">
               <p className="text-xs text-gray-400 font-mono break-all">
