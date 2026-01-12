@@ -126,14 +126,6 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
 
   // === NOVA FUNÇÃO DE DOWNLOAD ===
   const handleDownloadPDF = async (boleto: Boleto) => {
-    // Evita comportamento padrão de submit
-
-    // 1. Se já tem link direto, abre em nova aba
-    if (boleto.boleto_pdf_link) {
-      window.open(boleto.boleto_pdf_link, "_blank");
-      return;
-    }
-
     // 2. Se não tem link, gera via API
     try {
       setDownloadingId(boleto.id);
