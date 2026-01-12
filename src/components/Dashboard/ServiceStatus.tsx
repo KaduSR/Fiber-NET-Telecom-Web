@@ -1,3 +1,4 @@
+// cspell:disable
 import React, { useEffect, useState } from "react";
 import {
   Activity,
@@ -14,7 +15,7 @@ import {
   ArrowLeft,
   Zap,
 } from "lucide-react";
-import { ENDPOINTS } from "../config";
+import { ENDPOINTS } from "../../config";
 
 // ===== TIPAGEM DA SUA API REAL (2025) =====
 interface ServiceDetail {
