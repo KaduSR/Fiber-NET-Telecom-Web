@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { Menu, X, Headphones, FileText } from "lucide-react";
-import { NAV_ITEMS } from "../../../constants";
+// cspell:disable
+import { AppWindowIcon, Headphones, Menu, X } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { NAV_ITEMS, CONTACT_INFO } from "../../../constants";
 import Button from "../Button";
 import FiberNetLogo from "../FiberNetLogo";
 
@@ -34,8 +35,14 @@ const Navbar: React.FC<NavbarProps> = ({
   ) => {
     e.preventDefault();
 
+    // if (href === "segunda-via") {
+    //   if (onOpenSegundaVia) onOpenSegundaVia();
+    //   setIsOpen(false);
+    //   return;
+    // }
     if (href === "segunda-via") {
-      if (onOpenSegundaVia) onOpenSegundaVia();
+      const phoneClean = CONTACT_INFO.phone.replace(/\D/g, "");
+      window.location.href = `tel:${phoneClean}`;
       setIsOpen(false);
       return;
     }
@@ -141,7 +148,13 @@ const Navbar: React.FC<NavbarProps> = ({
               <Button
                 variant="primary"
                 className="!py-2 !px-5 text-xs font-bold uppercase tracking-wider rounded-full"
-                onClick={() => onNavigate("client-area")}
+                /* onClick={() => onNavigate("client-area")} */
+                onClick={() =>
+                  window.open(
+                    "https://centralfiber.online/central_assinante_web/login",
+                    "_blank"
+                  )
+                }
               >
                 Área do Cliente
               </Button>

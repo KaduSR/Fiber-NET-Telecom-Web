@@ -1,14 +1,15 @@
-import React, { useEffect } from "react";
+// cspell: disable
 import {
-  X,
-  MessageCircle,
   ExternalLink,
   Headphones,
-  FileText,
+  MessageCircle,
+  PhoneForwarded,
+  X,
 } from "lucide-react";
+import React, { useEffect } from "react";
 import Button from "../Button";
-import { CONTACT_INFO } from "../../../constants";
 import FiberNetTextLogo from "../FiberNetTextLogo";
+import { CONTACT_INFO } from "./../../../constants";
 
 interface SupportModalProps {
   isOpen: boolean;
@@ -34,17 +35,20 @@ const SupportModal: React.FC<SupportModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleClientAreaClick = () => {
-    if (onNavigate) {
-      onNavigate("client-area");
-    }
-    onClose();
-  };
+  // const handleClientAreaClick = () => {
+  //   if (onNavigate) {
+  //     onNavigate("client-area");
+  //   }
+  //   onClose();
+  // };
 
   const handleSegundaViaClick = () => {
-    if (onOpenSegundaVia) {
-      onOpenSegundaVia();
-    }
+    // if (onOpenSegundaVia) {
+    //   onOpenSegundaVia();
+    // }
+    // onClose();
+    const phoneClean = CONTACT_INFO.phone.replace(/\D/g, "");
+    window.open(`tel:${phoneClean}`, "_blank");
     onClose();
   };
 
@@ -127,12 +131,12 @@ const SupportModal: React.FC<SupportModalProps> = ({
           >
             <div className="flex items-center gap-4">
               <div className="bg-fiber-orange/20 p-3 rounded-full text-fiber-orange group-hover:scale-110 transition-transform">
-                <FileText size={24} aria-hidden="true" />
+                <PhoneForwarded size={24} aria-hidden="true" />
               </div>
               <div className="text-left">
-                <div className="text-white font-bold">2ª Via de Boleto</div>
+                <div className="text-white font-bold">Ligue Agora</div>
                 <div className="text-xs text-gray-400">
-                  Acesso rápido por CPF/CNPJ
+                  Nossa central telefonica de atendimento
                 </div>
               </div>
             </div>
@@ -150,13 +154,19 @@ const SupportModal: React.FC<SupportModalProps> = ({
             variant="primary"
             fullWidth
             aria-label="Acessar Área do Cliente"
-            onClick={handleClientAreaClick}
+            // onClick={handleClientAreaClick}
+            onClick={() =>
+              window.open(
+                "https://centralfiber.online/central_assinante_web/login",
+                "_blank"
+              )
+            }
           >
             Acessar Área do Cliente
           </Button>
           <div className="mt-4 text-center">
             <p className="text-[10px] text-red-500 uppercase tracking-wider font-bold">
-              NÃO ACEITAMOS LIGAÇÕES!!
+              Só aceitamos ligações via Telefone Fixo!!
             </p>
             <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-2">
               Horário de Atendimento
