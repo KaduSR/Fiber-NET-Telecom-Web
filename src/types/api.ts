@@ -1,12 +1,20 @@
 // web/src/types/api.ts
-
+// cspell: disable
 export interface Cliente {
   id: number;
   nome: string;
-  endereco?: string;
-  cpn_cnpj?: string;
+  razao?: string; // Adicionado
+  fantasia?: string; // Adicionado
+  cnpj_cpf?: string; // Adicionado (Correção do nome comum)
+  cpn_cnpj?: string; // Mantido por compatibilidade
+  telefone_celular?: string; // Adicionado
   fone?: string;
   email?: string;
+  endereco?: string;
+  numero?: string; // Adicionado
+  bairro?: string; // Adicionado
+  cidade?: string; // Adicionado
+  uf?: string; // Adicionado
 }
 
 export interface Contrato {
@@ -14,6 +22,7 @@ export interface Contrato {
   id_cliente: number;
   login: string;
   plano: string;
+  valor?: string; // Adicionado para exibir no card
   status: string;
   descricao_aux_plano_venda?: string;
   pdf_link?: string;
@@ -28,11 +37,12 @@ export interface Fatura {
   contrato_id?: number;
   data_vencimento: string;
   valor: string;
-  status: string; // 'A' (Aberto), 'C' (Pago/Cancelado)
+  status: string;
   linha_digitavel?: string;
   pix_txid?: string;
   pix_code?: string;
   boleto?: string;
+  documento?: string; // Adicionado
 }
 
 export interface Login {
@@ -57,7 +67,6 @@ export interface NotaFiscal {
   link_pdf?: string;
 }
 
-// === TIPOS DE CONSUMO ===
 export interface ConsumoDaily {
   data: string;
   download_bytes: number;

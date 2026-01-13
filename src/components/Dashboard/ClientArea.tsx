@@ -1,4 +1,5 @@
 // spell:disable
+// src/components/Dashboard/ClientArea.tsx
 import {
   Activity,
   AlertCircle,
@@ -18,6 +19,7 @@ import {
   Cliente as DashboardCliente,
   Contrato as DashboardContrato,
   Fatura as DashboardFatura,
+  Plan,
 } from "../../types/api";
 import SegundaViaModal from "../Modals/SegundaViaModal";
 import PlanCard from "./PlanCard";
@@ -34,22 +36,20 @@ export function ClientArea({ clientId }: ClientAreaProps) {
   const [faturas, setFaturas] = useState<DashboardFatura[]>([]);
   const [contratos, setContratos] = useState<DashboardContrato[]>([]);
 
-  // Estado para o modal de segunda via
   const [selectedFatura, setSelectedFatura] = useState<DashboardFatura | null>(
     null
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
-  // Novo estado para controlar em qual aba o modal abre
   const [modalInitialMode, setModalInitialMode] = useState<"boleto" | "pix">(
     "boleto"
   );
 
   useEffect(() => {
-    // CORREÇÃO DO DELAY: Limpa os dados antigos imediatamente ao trocar o ID
+    // Reset para evitar delay visual
     setCliente(null);
     setFaturas([]);
     setContratos([]);
-    setLoading(true); // Força loading visual
+    setLoading(true);
 
     loadClientData();
   }, [clientId]);
@@ -57,15 +57,19 @@ export function ClientArea({ clientId }: ClientAreaProps) {
   const loadClientData = async () => {
     try {
       setError(null);
-      const data = await apiService.getDashboardData(clientId);
+      // CORREÇÃO 1: Usar getDashboard() em vez de getDashboardData
+      const data = await apiService.getDashboard();
 
-      if (data.cliente) setCliente(data.cliente);
+      // O endpoint retorna arrays. Pegamos o primeiro cliente ou filtramos pelo ID se necessário
+      if (data.clientes && data.clientes.length > 0) {
+        setCliente(data.clientes[0]);
+      }
       if (data.faturas) setFaturas(data.faturas);
       if (data.contratos) setContratos(data.contratos);
     } catch (err) {
       console.error("Erro ao carregar dados do cliente:", err);
       setError(
-        "Não foi possível carregar os dados do cliente. Tente novamente mais tarde."
+        "Não foi possível carregar os dados. Tente novamente mais tarde."
       );
     } finally {
       setLoading(false);
@@ -77,20 +81,15 @@ export function ClientArea({ clientId }: ClientAreaProps) {
     mode: "boleto" | "pix" = "boleto"
   ) => {
     setSelectedFatura(fatura);
-    setModalInitialMode(mode); // Define se abre no Pix ou Boleto
+    setModalInitialMode(mode);
     setIsModalOpen(true);
   };
 
-  // Lógica de Filtragem: Vencidos ou Do Mês (Apenas Abertos)
+  // Lógica de Filtragem
   const faturasVisiveis = faturas.filter((f) => {
-    // Se já estiver pago, esconde (conforme sua solicitação de foco em cobrança)
-    // Se quiser mostrar pagos do mês, remova a checagem f.status === 'A'
     if (f.status !== "A") return false;
-
     const dataVenc = new Date(f.data_vencimento);
     const hoje = new Date();
-
-    // Zera horas para comparação apenas de data
     const hojeSemHora = new Date(
       hoje.getFullYear(),
       hoje.getMonth(),
@@ -102,20 +101,15 @@ export function ClientArea({ clientId }: ClientAreaProps) {
       dataVenc.getDate()
     );
 
-    // 1. É vencido? (Data anterior a hoje)
     const isVencido = vencSemHora < hojeSemHora;
-
-    // 2. É do mês atual?
     const isDoMes =
       dataVenc.getMonth() === hoje.getMonth() &&
       dataVenc.getFullYear() === hoje.getFullYear();
 
-    // 3. É vencimento futuro mas ainda dentro do mês atual? (Coberto pelo isDoMes)
-
     return isVencido || isDoMes;
   });
 
-  // Helpers de UI
+  // Helpers
   const getStatusColor = (status: string) => {
     switch (status) {
       case "A":
@@ -140,6 +134,21 @@ export function ClientArea({ clientId }: ClientAreaProps) {
       default:
         return status;
     }
+  };
+
+  // Helper para converter Contrato em Plan para o PlanCard
+  const mapContratoToPlan = (c: DashboardContrato): Plan => {
+    return {
+      id: c.id,
+      speed: c.plano.split(" ")[0] || "Fibra", // Tenta extrair velocidade do nome "500MB Fibra"
+      price: c.valor ? c.valor.split(",")[0] : "00",
+      cents: c.valor ? c.valor.split(",")[1] || "00" : "00",
+      period: "/mês",
+      description:
+        c.descricao_aux_plano_venda || "Plano de Internet Fibra Óptica",
+      benefits: ["Wi-Fi Grátis", "Instalação Grátis", "Suporte VIP"],
+      highlight: false,
+    };
   };
 
   if (loading) {
@@ -170,11 +179,9 @@ export function ClientArea({ clientId }: ClientAreaProps) {
 
   if (!cliente) return null;
 
-  const contratosAtivos = contratos.filter((c) => c.status === "A");
-
   return (
     <div className="space-y-8 animate-fade-in">
-      {/* Cabeçalho do Cliente (Sem alterações) */}
+      {/* Header */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
         <div className="flex flex-col md:flex-row justify-between items-start gap-6">
           <div className="flex items-start gap-4">
@@ -182,13 +189,15 @@ export function ClientArea({ clientId }: ClientAreaProps) {
               <User className="w-8 h-8 text-primary-600" />
             </div>
             <div>
+              {/* CORREÇÃO 2: Uso seguro de propriedades (fallback para nome) */}
               <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                {cliente.razao || cliente.fantasia}
+                {cliente.razao || cliente.nome || cliente.fantasia}
               </h1>
               <div className="flex flex-wrap gap-4 text-sm text-gray-600">
                 <div className="flex items-center gap-1.5">
                   <CreditCard className="w-4 h-4" />
-                  <span>CPF/CNPJ: {cliente.cnpj_cpf}</span>
+                  {/* CORREÇÃO 3: Uso de cpn_cnpj ou cnpj_cpf */}
+                  <span>CPF/CNPJ: {cliente.cnpj_cpf || cliente.cpn_cnpj}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Mail className="w-4 h-4" />
@@ -196,6 +205,7 @@ export function ClientArea({ clientId }: ClientAreaProps) {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Phone className="w-4 h-4" />
+                  {/* CORREÇÃO 4: Uso de telefone_celular ou fone */}
                   <span>{cliente.telefone_celular || cliente.fone}</span>
                 </div>
               </div>
@@ -207,15 +217,15 @@ export function ClientArea({ clientId }: ClientAreaProps) {
           </div>
         </div>
 
-        {/* Resumo e Endereço (Mantido) */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
             <h3 className="text-sm font-medium text-gray-500 mb-3 flex items-center gap-2">
               <MapPin className="w-4 h-4" />
               Endereço Principal
             </h3>
+            {/* CORREÇÃO 5: Uso seguro de endereço */}
             <p className="text-gray-900 font-medium">
-              {cliente.endereco}, {cliente.numero}
+              {cliente.endereco}, {cliente.numero || "S/N"}
             </p>
             <p className="text-gray-600 text-sm mt-1">
               {cliente.bairro} - {cliente.cidade}/{cliente.uf}
@@ -252,7 +262,6 @@ export function ClientArea({ clientId }: ClientAreaProps) {
         </div>
       </div>
 
-      {/* Seção de Contratos (Mantido) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
           <div className="flex items-center justify-between">
@@ -261,13 +270,13 @@ export function ClientArea({ clientId }: ClientAreaProps) {
               Planos Contratados
             </h2>
           </div>
-          {contratosAtivos.length > 0 ? (
+          {contratos.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {contratosAtivos.map((contrato) => (
+              {contratos.map((contrato) => (
+                // CORREÇÃO 6: Mapeamento de Contrato para Plan e remoção de props extras
                 <PlanCard
                   key={contrato.id}
-                  contrato={contrato}
-                  clienteId={cliente.id}
+                  plan={mapContratoToPlan(contrato)}
                 />
               ))}
             </div>
@@ -282,11 +291,11 @@ export function ClientArea({ clientId }: ClientAreaProps) {
             <Activity className="w-5 h-5 text-primary-600" />
             Status da Conexão
           </h2>
-          <ServiceStatus clientId={cliente.id} />
+          {/* CORREÇÃO 7: Remoção de prop desnecessária clientId */}
+          <ServiceStatus />
         </div>
       </div>
 
-      {/* Seção Financeira - ATUALIZADA */}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
@@ -350,30 +359,19 @@ export function ClientArea({ clientId }: ClientAreaProps) {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end gap-2">
-                          {/* BOTÃO PIX ADICIONADO */}
                           <button
                             onClick={() => handleOpenSegundaVia(fatura, "pix")}
                             className="text-teal-600 hover:text-teal-900 p-1.5 hover:bg-teal-50 rounded-lg transition-colors group relative"
-                            title="Pagar com Pix"
                           >
                             <QrCode className="w-4 h-4" />
-                            <span className="absolute bottom-full mb-2 right-0 w-max px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                              Pagar com Pix
-                            </span>
                           </button>
-
-                          {/* Botão Boleto - Atualizado para passar o modo 'boleto' */}
                           <button
                             onClick={() =>
                               handleOpenSegundaVia(fatura, "boleto")
                             }
                             className="text-primary-600 hover:text-primary-900 p-1.5 hover:bg-primary-50 rounded-lg transition-colors group relative"
-                            title="Segunda Via PDF"
                           >
                             <FileText className="w-4 h-4" />
-                            <span className="absolute bottom-full mb-2 right-0 w-max px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                              2ª Via Boleto
-                            </span>
                           </button>
                         </div>
                       </td>
@@ -386,7 +384,7 @@ export function ClientArea({ clientId }: ClientAreaProps) {
                       className="px-6 py-8 text-center text-gray-500"
                     >
                       <CheckCircle className="w-8 h-8 mx-auto text-green-500 mb-2" />
-                      Nenhuma fatura pendente para este período.
+                      Nenhuma fatura pendente.
                     </td>
                   </tr>
                 )}
@@ -396,7 +394,6 @@ export function ClientArea({ clientId }: ClientAreaProps) {
         </div>
       </div>
 
-      {/* Modal atualizado passando o modo inicial */}
       <SegundaViaModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -406,3 +403,5 @@ export function ClientArea({ clientId }: ClientAreaProps) {
     </div>
   );
 }
+
+export default ClientArea;

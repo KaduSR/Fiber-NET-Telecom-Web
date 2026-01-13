@@ -1,10 +1,11 @@
+// spell:disable
 import React, { useState, Suspense, useEffect } from "react";
 import Navbar from "./src/components/Layout/Navbar";
 import Hero from "./src/components/Layout/Hero";
 import Features from "./src/components/Features";
 import Footer from "./src/components/Layout/Footer";
 import SupportModal from "./src/components/Modals/SupportModal";
-import ClientArea from "./src/components/Dashboard/ClientArea";
+import { ClientArea } from "./src/components/Dashboard/ClientArea";
 import NewsSection from "./src/components/NewsSection";
 import { PLANS, HISTORY_TEXT } from "./constants";
 import { Loader2, Headphones } from "lucide-react";
@@ -23,9 +24,8 @@ const ServiceStatus = React.lazy(
 );
 const LegalCompliance = React.lazy(
   () => import("./src/components/LegalCompliance")
-);import SegundaViaModal from './src/components/Modals/SegundaViaModal';
-
-
+);
+import SegundaViaModal from "./src/components/Modals/SegundaViaModal";
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState("home");
