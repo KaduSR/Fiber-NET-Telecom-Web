@@ -1,7 +1,21 @@
-import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import { fileURLToPath } from "url";
 import path from "path";
+import { fileURLToPath } from "url";
+import { defineConfig } from "vite";
+// 1. Importe o crypto nativo do Node
+import crypto from "crypto";
+
+// 2. Adicione este bloco de correção (Polyfill) antes do defineConfig
+if (typeof globalThis.crypto === "undefined") {
+  // @ts-ignore
+  globalThis.crypto = {
+    // @ts-ignore
+    getRandomValues: (arr) => crypto.randomFillSync(arr),
+  };
+} else if (typeof globalThis.crypto.getRandomValues === "undefined") {
+  // @ts-ignore
+  globalThis.crypto.getRandomValues = (arr) => crypto.randomFillSync(arr);
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -18,7 +32,6 @@ export default defineConfig({
   optimizeDeps: {
     include: ["@google/genai"],
   },
-  // REMOVA O BLOCO build.rollupOptions.external QUE ESTAVA AQUI
   server: {
     host: true,
     proxy: {
