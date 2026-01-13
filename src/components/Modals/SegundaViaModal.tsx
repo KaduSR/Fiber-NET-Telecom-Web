@@ -1,6 +1,7 @@
 // cspell: disable
 import {
   AlertCircle,
+  Barcode,
   CheckCircle,
   Copy,
   CreditCard,
@@ -13,7 +14,7 @@ import {
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { API_BASE_URL } from "../../config";
-import { apiService } from "../../services/apiService"; // Certifique-se de importar o apiService
+import { apiService } from "../../services/apiService";
 import Button from "../Button";
 
 interface SegundaViaModalProps {
@@ -21,18 +22,24 @@ interface SegundaViaModalProps {
   onClose: () => void;
 }
 
+// Interface atualizada conforme seu Controller
 interface Boleto {
   id: number;
+  clienteId: number;
+  clienteNome: string;
   documento: string;
-  valor: string;
-  data_vencimento: string;
+  vencimento: string;
+  vencimentoFormatado: string;
+  valor: number;
+  valorFormatado: string;
+  linhaDigitavel: string | null;
+  pixCopiaECola: string | null;
+  boleto_pdf_link: string | null;
   status: string;
-  linha_digitavel?: string;
-  pix_txid?: string;
-  pix_qrcode?: string;
-  boleto_pdf_link?: string;
-  clienteNome?: string;
-  diasVencimento?: number;
+  statusCor: string;
+  diasVencimento: number;
+  // Campos auxiliares para controle de interface
+  pixImagem?: string;
 }
 
 const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
@@ -41,18 +48,21 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
 }) => {
   const [cpfCnpj, setCpfCnpj] = useState("");
   const [loading, setLoading] = useState(false);
-  const [downloadingId, setDownloadingId] = useState<number | null>(null); // Estado para loading do download
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
+  const [loadingPixId, setLoadingPixId] = useState<number | null>(null); // Estado para loading do botão Pix
   const [boletos, setBoletos] = useState<Boleto[]>([]);
   const [error, setError] = useState("");
   const [resumo, setResumo] = useState<any>(null);
 
+  // Estados do Modal de Pix
   const [pixModalOpen, setPixModalOpen] = useState(false);
   const [activePixCode, setActivePixCode] = useState("");
   const [activePixImage, setActivePixImage] = useState("");
   const [isPixCopied, setIsPixCopied] = useState(false);
+
+  // Estados do Código de Barras
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // Resetar modal ao fechar
   useEffect(() => {
     if (!isOpen) {
       setCpfCnpj("");
@@ -60,36 +70,9 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
       setError("");
       setResumo(null);
       setLoading(false);
+      setPixModalOpen(false);
     }
   }, [isOpen]);
-  const formatarDataVencimento = (dataString?: string) => {
-    if (!dataString) return "--/--/----";
-    if (dataString.includes("/")) {
-      const [dia, mes, ano] = dataString.split("-");
-      return `${dia}/${mes}/${ano}`;
-    }
-    return dataString;
-  };
-
-  const calcularDiasVencimento = (dataVencimento?: string): number => {
-    if (!dataVencimento) return 0;
-
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-
-    let dataVenc: Date;
-    if (dataVencimento.includes("/")) {
-      const [dia, mes, ano] = dataVencimento.split("/").map(Number);
-      dataVenc = new Date(ano, mes - 1, dia);
-    } else {
-      dataVenc = new Date(dataVencimento);
-    }
-
-    const diffTime = hoje.getTime() - dataVenc.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    return diffDays;
-  };
 
   const formatarCpfCnpj = (valor: string) => {
     const numeros = valor.replace(/\D/g, "");
@@ -127,7 +110,6 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
     setResumo(null);
 
     try {
-      // Usando a rota correta do controller que acabamos de ajustar
       const response = await fetch(`${API_BASE_URL}/boletos/buscar-cpf`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -141,15 +123,11 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
       const data = await response.json();
 
       if (data.boletos && data.boletos.length > 0) {
+        // Ordenação: Vencidos primeiro
         const boletosOrdenados = data.boletos.sort((a: Boleto, b: Boleto) => {
-          const dataA = a.data_vencimento
-            ? new Date(a.data_vencimento)
-            : new Date();
-          const dataB = b.data_vencimento
-            ? new Date(b.data_vencimento)
-            : new Date();
-          return dataB.getTime() - dataA.getTime();
+          return a.diasVencimento - b.diasVencimento;
         });
+
         setBoletos(boletosOrdenados);
         setResumo(data.resumo);
       } else {
@@ -162,18 +140,12 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
     }
   };
 
-  // === NOVA FUNÇÃO DE DOWNLOAD ===
   const handleDownloadPDF = async (boleto: Boleto) => {
-    // 2. Se não tem link, gera via API
     try {
       setDownloadingId(boleto.id);
-
-      // Chama o endpoint de gerar segunda via (verifique se apiService tem esse método)
-      // Se apiService.imprimirBoleto não existir, use fetch direto:
       const response = await apiService.imprimirBoleto(boleto.id);
 
       if (response && response.base64_document) {
-        // Cria link invisível para download
         const linkSource = `data:application/pdf;base64,${response.base64_document}`;
         const downloadLink = document.createElement("a");
         const fileName = `Fatura-${boleto.documento || boleto.id}.pdf`;
@@ -192,35 +164,69 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
     }
   };
 
-  const copiarCodigo = (texto: string, id: string) => {
+  // === FUNÇÕES DE CÓDIGO DE BARRAS ===
+  const copiarCodigoBarras = (texto: string, id: string) => {
+    console.log("Copiando Código de Barras:", texto); // Debug
     navigator.clipboard.writeText(texto);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const abrirPixModal = (codigo: string, imagem?: string | undefined) => {
+  // === FUNÇÕES DO PIX ===
+  const abrirPixModal = (codigo: string, imagem?: string) => {
+    console.log("Abrindo Modal Pix com Código:", codigo); // Debug
+    if (!codigo) {
+      alert("Erro: Código Pix vazio.");
+      return;
+    }
     setActivePixCode(codigo);
     setActivePixImage(imagem || "");
     setPixModalOpen(true);
     setIsPixCopied(false);
   };
 
-  const copiarPix = () => {
+  const copiarPixDoModal = () => {
+    console.log("Copiando Pix do Modal:", activePixCode); // Debug
     navigator.clipboard.writeText(activePixCode);
     setIsPixCopied(true);
     setTimeout(() => setIsPixCopied(false), 2000);
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Vencido":
-        return "text-red-400 bg-red-400/10 border-red-400/20";
-      case "Vence Hoje":
-        return "text-orange-400 bg-orange-400/10 border-orange-400/20";
-      case "Vence em Breve":
-        return "text-yellow-400 bg-yellow-400/10 border-yellow-400/20";
-      default:
-        return "text-green-400 bg-green-400/10 border-green-400/20";
+  // Função para buscar o Pix sob demanda (Botão Verde)
+  const handlePagarComPix = async (boleto: Boleto) => {
+    // 1. Se já tem o código carregado no objeto, abre direto
+    if (boleto.pixCopiaECola) {
+      console.log("Pix já carregado, abrindo modal...");
+      abrirPixModal(boleto.pixCopiaECola, boleto.pixImagem);
+      return;
+    }
+
+    // 2. Se não tem, busca no backend
+    try {
+      setLoadingPixId(boleto.id);
+      console.log(`Buscando Pix para boleto ${boleto.id}...`);
+
+      const response = await fetch(`${API_BASE_URL}/boletos/${boleto.id}/pix`);
+      const data = await response.json();
+
+      console.log("Resposta Pix:", data);
+
+      if (data.success && data.pixCopiaECola) {
+        // Atualiza o boleto na lista local para não buscar de novo
+        boleto.pixCopiaECola = data.pixCopiaECola;
+        boleto.pixImagem = data.pixImagem;
+
+        abrirPixModal(data.pixCopiaECola, data.pixImagem);
+      } else {
+        alert(
+          "O sistema financeiro ainda não gerou o QR Code para esta fatura. Tente novamente em alguns instantes."
+        );
+      }
+    } catch (e) {
+      console.error("Erro ao buscar Pix:", e);
+      alert("Erro ao conectar servidor para gerar Pix.");
+    } finally {
+      setLoadingPixId(null);
     }
   };
 
@@ -343,9 +349,13 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-3">
                           <span
-                            className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(
-                              boleto.status
-                            )}`}
+                            className={`px-3 py-1 rounded-full text-xs font-bold border ${
+                              boleto.diasVencimento < 0
+                                ? "text-red-400 bg-red-400/10 border-red-400/20"
+                                : boleto.diasVencimento <= 5
+                                ? "text-yellow-400 bg-yellow-400/10 border-yellow-400/20"
+                                : "text-green-400 bg-green-400/10 border-green-400/20"
+                            }`}
                           >
                             {boleto.status}
                           </span>
@@ -361,55 +371,56 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
                               Vencimento
                             </div>
                             <div className="text-lg font-bold text-white">
-                              {formatarDataVencimento(boleto.data_vencimento)}
+                              {boleto.vencimentoFormatado}
                             </div>
-                            {calcularDiasVencimento(boleto.data_vencimento) >
-                              0 &&
-                              boleto.status !== "Pago" && (
-                                <span className="text-xs font-bold text-red-400 block mt-1">
-                                  {calcularDiasVencimento(
-                                    boleto.data_vencimento
-                                  )}{" "}
-                                  dias
-                                </span>
-                              )}
+                            {boleto.diasVencimento < 0 && (
+                              <span className="text-xs font-bold text-red-400 block mt-1">
+                                Vencido há {Math.abs(boleto.diasVencimento)}{" "}
+                                dias
+                              </span>
+                            )}
                           </div>
                           <div>
                             <div className="text-xs text-gray-500 uppercase">
                               Valor
                             </div>
                             <div className="text-lg font-bold text-fiber-orange">
-                              R$ {boleto.valor}
+                              {boleto.valorFormatado}
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      {/* Botões de Ação - Agora com TYPE=BUTTON para não recarregar */}
+                      {/* --- BOTÕES DE AÇÃO --- */}
                       <div className="flex flex-col gap-3 min-w-[200px]">
-                        {/* Botão PIX */}
-                        {(boleto.pix_txid || boleto.pix_qrcode) && (
+                        {/* 1. Botão PIX (Verde) */}
+                        {/* Exibe se tiver código OU status aberto */}
+                        {(boleto.pixCopiaECola ||
+                          boleto.status === "A Vencer" ||
+                          boleto.status === "Vencido" ||
+                          boleto.status === "Vence Hoje") && (
                           <button
                             type="button"
-                            onClick={() =>
-                              abrirPixModal(
-                                boleto.pix_txid || boleto.pix_qrcode || "",
-                                boleto.pix_qrcode
-                              )
-                            }
-                            className="flex items-center justify-center gap-2 px-4 py-3 bg-fiber-green/10 text-fiber-green rounded-lg font-bold text-sm hover:bg-fiber-green/20 transition-all"
+                            onClick={() => handlePagarComPix(boleto)}
+                            disabled={loadingPixId === boleto.id}
+                            className="flex items-center justify-center gap-2 px-4 py-3 bg-fiber-green/10 text-fiber-green rounded-lg font-bold text-sm hover:bg-fiber-green/20 transition-all disabled:opacity-50"
                           >
-                            <QrCode size={18} /> Pagar com PIX
+                            {loadingPixId === boleto.id ? (
+                              <Loader2 className="animate-spin" size={18} />
+                            ) : (
+                              <QrCode size={18} />
+                            )}
+                            Pagar com PIX
                           </button>
                         )}
 
-                        {/* Botão Barras */}
-                        {boleto.linha_digitavel && (
+                        {/* 2. Botão Linha Digitável (Cinza/Branco) */}
+                        {boleto.linhaDigitavel && (
                           <button
-                            type="button" // IMPORTANTE
+                            type="button"
                             onClick={() =>
-                              copiarCodigo(
-                                boleto.linha_digitavel!,
+                              copiarCodigoBarras(
+                                boleto.linhaDigitavel!,
                                 `bar-${boleto.id}`
                               )
                             }
@@ -425,15 +436,15 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
                               </>
                             ) : (
                               <>
-                                <Copy size={18} /> Copiar Código
+                                <Barcode size={18} /> Copiar Barras
                               </>
                             )}
                           </button>
                         )}
 
-                        {/* Botão PDF - Sempre Visível */}
+                        {/* 3. Botão PDF (Laranja) */}
                         <button
-                          type="button" // IMPORTANTE: Evita o refresh!
+                          type="button"
                           onClick={() => handleDownloadPDF(boleto)}
                           disabled={downloadingId === boleto.id}
                           className="flex items-center justify-center gap-2 px-4 py-3 bg-fiber-orange/10 text-fiber-orange rounded-lg font-bold text-sm hover:bg-fiber-orange/20 transition-all disabled:opacity-50"
@@ -459,7 +470,7 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
         </div>
       </div>
 
-      {/* Modal PIX */}
+      {/* --- MODAL ESPECÍFICO DO PIX --- */}
       {pixModalOpen && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center px-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-fiber-card border border-white/10 rounded-2xl p-6 max-w-md w-full relative">
@@ -470,35 +481,46 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
               <X size={20} />
             </button>
             <h3 className="text-xl font-bold text-white text-center mb-4">
-              Pagamento PIX
+              Pagamento via PIX
             </h3>
+
+            {/* Área da Imagem do QR Code */}
             <div className="bg-white p-4 rounded-lg mx-auto w-fit mb-4 min-h-[232px] flex items-center justify-center">
               {activePixImage ? (
                 <img
                   src={
-                    activePixImage.startsWith("data.image")
+                    activePixImage.startsWith("data:image")
                       ? activePixImage
                       : `data:image/png;base64,${activePixImage}`
                   }
-                  alt="QR Code"
+                  alt="QR Code Pix"
                   className="w-[200px] h-[200px] object-contain"
                 />
               ) : (
                 <QrCode size={200} className="text-neutral-900 opacity-20" />
               )}
             </div>
-            <div className="bg-neutral-900 p-3 rounded-lg mb-4 max-h-20 overflow-y-auto">
+
+            <div className="bg-neutral-900 p-3 rounded-lg mb-4 max-h-24 overflow-y-auto">
               <p className="text-xs text-gray-400 font-mono break-all">
                 {activePixCode}
               </p>
             </div>
+
             <Button
-              onClick={copiarPix}
+              onClick={copiarPixDoModal}
               fullWidth
-              variant="primary"
               className="gap-2 !bg-fiber-green hover:!bg-green-600"
             >
-              {isPixCopied ? "Copiado!" : "Copiar Código"}
+              {isPixCopied ? (
+                <>
+                  <CheckCircle size={18} /> Copiado!
+                </>
+              ) : (
+                <>
+                  <Copy size={18} /> Copiar Pix Copia e Cola
+                </>
+              )}
             </Button>
           </div>
         </div>
