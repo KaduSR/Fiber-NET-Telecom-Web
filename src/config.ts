@@ -16,10 +16,11 @@ export const ENDPOINTS = {
   DASHBOARD: `/dashboard`,
   CHANGE_PASSWORD: `/senha/trocar`,
   RECOVERY: `/senha/recuperar`,
-  INVOICES: `/faturas`,
+  INVOICES: `/boletos/buscar-cpf`, // <--- CORRIGIDO (Rota real do Backend)
   SERVICE_STATUS: `/status`,
   SPEEDTEST_RUN: `/speedtest`,
-  GET_PIX: (id: number | string) => `/faturas/${id}/pix`,
+  // Nova rota dinâmica para PIX
+  GET_PIX: (id: number | string) => `/boletos/${id}/pix`, // <--- GARANTA QUE ESTEJA ASSIM TAMBÉM
   LOGIN_ACTION: (id: string | number, action: string) =>
     `/logins/${id}/${action}`,
 };
