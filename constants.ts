@@ -1,3 +1,4 @@
+// spell:disable
 import { NavItem, Plan } from "./types";
 
 export const NAV_ITEMS: NavItem[] = [
