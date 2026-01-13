@@ -4,28 +4,28 @@ import {
   ArrowLeft,
   CheckCircle,
   Copy,
-  CreditCard,
+  CreditCard, // Renomeei o ícone para não conflitar com o componente
   Download,
   FileText,
   Loader2,
-  QrCode,
+  QrCode as QrCodeIcon,
   Search,
   X,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
+import QRCode from "react-qr-code"; // <--- IMPORTAÇÃO CORRETA (Instale: npm install react-qr-code)
 import { API_BASE_URL, ENDPOINTS } from "../../config";
-import { apiService } from "../../services/apiService"; // Importando o serviço para buscar PDF/Pix
-import { Fatura as DashboardFatura } from "../../types/api"; // Importando o tipo da Fatura
+import { apiService } from "../../services/apiService";
+import { Fatura as DashboardFatura } from "../../types/api";
 import Button from "../Button";
 
 interface SegundaViaModalProps {
   isOpen: boolean;
   onClose: () => void;
-  fatura?: DashboardFatura | null; // Opcional: Para abrir direto na fatura
-  initialViewMode?: "boleto" | "pix"; // Opcional: Para abrir direto no Pix
+  fatura?: DashboardFatura | null;
+  initialViewMode?: "boleto" | "pix";
 }
 
-// Interface local para os boletos da busca pública
 interface BoletoPublico {
   id: number;
   documento: string;
@@ -170,8 +170,6 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
   const loadBoleto = async (id: number) => {
     setLoadingDetail(true);
     try {
-      // Se tiver link PDF direto (modo público), usamos ele?
-      // Não, aqui vamos padronizar usando o endpoint de API que pega o base64 para garantir consistência
       const data = await apiService.imprimirBoleto(id);
       setPdfBase64(data.base64_document);
     } catch (error) {
@@ -185,9 +183,8 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
     setLoadingDetail(true);
     try {
       const data = await apiService.getPixCode(id);
-      // Suporta tanto qrcode direto quanto imagem
       if (data.qrcode) setPixCode(data.qrcode);
-      else if (data.imagem) setPixCode(data.qrcode); // Fallback
+      else if (data.imagem) setPixCode(data.qrcode);
     } catch (error) {
       console.error(error);
     } finally {
@@ -203,7 +200,6 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
     }
   };
 
-  // Helpers de UI
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Vencido":
@@ -214,11 +210,6 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
         return "text-green-400 bg-green-400/10 border-green-400/20";
     }
   };
-
-  // Importando QrCode dinamicamente para evitar erro de SSR se necessário,
-  // mas aqui estamos usando o lucide-react para o icone e react-qr-code para o componente
-  // Certifique-se de ter instalado: npm install react-qr-code
-  const QRCodeComponent = require("react-qr-code");
 
   if (!isOpen) return null;
 
@@ -232,7 +223,7 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
               {mode === "search" ? (
                 <FileText size={24} className="text-fiber-orange" />
               ) : (
-                <QrCode size={24} className="text-fiber-orange" />
+                <QrCodeIcon size={24} className="text-fiber-orange" />
               )}
             </div>
             <div>
@@ -357,7 +348,7 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
                           }
                           className="flex items-center justify-center gap-2 px-4 py-3 bg-fiber-green/10 text-fiber-green rounded-lg font-bold text-sm border border-fiber-green/30 hover:bg-fiber-green/20 transition-all"
                         >
-                          <QrCode size={18} /> Pagar com PIX
+                          <QrCodeIcon size={18} /> Pagar com PIX
                         </button>
                         <button
                           onClick={() =>
@@ -383,7 +374,6 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
           {/* MODO DETALHE (VISUALIZAÇÃO HÍBRIDA) */}
           {mode === "detail" && activeFaturaId && (
             <div className="space-y-6 animate-fadeIn">
-              {/* Botão Voltar (se não estiver no modo direto da ClientArea) */}
               {!fatura && (
                 <button
                   onClick={() => setMode("search")}
@@ -459,8 +449,7 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
                     {pixCode ? (
                       <>
                         <div className="bg-white p-4 rounded-xl inline-block shadow-lg">
-                          {/* Renderização do QR Code */}
-                          <QRCodeComponent.default value={pixCode} size={200} />
+                          <QRCode value={pixCode} size={200} />
                         </div>
                         <div className="max-w-md mx-auto">
                           <p className="text-sm text-gray-400 mb-2">
