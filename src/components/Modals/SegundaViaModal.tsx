@@ -1,7 +1,8 @@
 // spell:disable
 import {
   AlertCircle,
-  Check,
+  ArrowLeft,
+  CheckCircle,
   Copy,
   CreditCard,
   Download,
@@ -12,19 +13,19 @@ import {
   X,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import QRCode from "react-qr-code";
 import { API_BASE_URL, ENDPOINTS } from "../../config";
-import { apiService } from "../../services/apiService";
-import { Fatura as DashboardFatura } from "../../types/api";
+import { apiService } from "../../services/apiService"; // Importando o serviço para buscar PDF/Pix
+import { Fatura as DashboardFatura } from "../../types/api"; // Importando o tipo da Fatura
 import Button from "../Button";
 
 interface SegundaViaModalProps {
   isOpen: boolean;
   onClose: () => void;
-  fatura?: DashboardFatura | null; // Agora opcional
-  initialViewMode?: "boleto" | "pix";
+  fatura?: DashboardFatura | null; // Opcional: Para abrir direto na fatura
+  initialViewMode?: "boleto" | "pix"; // Opcional: Para abrir direto no Pix
 }
 
+// Interface local para os boletos da busca pública
 interface BoletoPublico {
   id: number;
   documento: string;
@@ -39,50 +40,53 @@ interface BoletoPublico {
   diasVencimento?: number;
 }
 
-export function SegundaViaModal({
+const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
   isOpen,
   onClose,
   fatura,
   initialViewMode = "boleto",
-}: SegundaViaModalProps) {
-  // Estado Geral
+}) => {
+  // === ESTADOS DE NAVEGAÇÃO ===
   const [mode, setMode] = useState<"search" | "detail">("search");
 
-  // Estado Busca Pública
+  // === ESTADOS DA BUSCA PÚBLICA ===
   const [cpfCnpj, setCpfCnpj] = useState("");
-  const [loadingSearch, setLoadingSearch] = useState(false);
-  const [boletosPublicos, setBoletosPublicos] = useState<BoletoPublico[]>([]);
-  const [errorSearch, setErrorSearch] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [boletos, setBoletos] = useState<BoletoPublico[]>([]);
+  const [error, setError] = useState("");
   const [resumo, setResumo] = useState<any>(null);
 
-  // Estado Detalhe (Pagamento)
-  const [selectedFatura, setSelectedFatura] = useState<DashboardFatura | null>(
-    null
-  );
+  // === ESTADOS DO DETALHE (PIX/BOLETO) ===
+  const [activeFaturaId, setActiveFaturaId] = useState<number | null>(null);
   const [viewTab, setViewTab] = useState<"boleto" | "pix">("boleto");
-  const [loadingPayment, setLoadingPayment] = useState(false);
+  const [loadingDetail, setLoadingDetail] = useState(false);
   const [pdfBase64, setPdfBase64] = useState<string | null>(null);
   const [pixCode, setPixCode] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
-  // Inicialização
+  // === EFEITO: Inicializar Modal ===
   useEffect(() => {
     if (isOpen) {
       if (fatura) {
-        // Se veio fatura via prop, vai direto pro detalhe
-        handleSelectFatura(fatura, initialViewMode);
+        // Se veio fatura da Área do Cliente, vai direto pro detalhe
+        abrirDetalheFatura(
+          fatura.id,
+          fatura.valor,
+          fatura.data_vencimento,
+          initialViewMode
+        );
       } else {
-        // Se não, vai pra busca
+        // Se não, reseta para busca pública
         setMode("search");
-        setBoletosPublicos([]);
-        setResumo(null);
-        setErrorSearch("");
         setCpfCnpj("");
+        setBoletos([]);
+        setResumo(null);
+        setError("");
       }
     }
   }, [isOpen, fatura, initialViewMode]);
 
-  // --- Lógica de Busca Pública ---
+  // === LÓGICA DE BUSCA PÚBLICA ===
   const formatarCpfCnpj = (valor: string) => {
     const numeros = valor.replace(/\D/g, "");
     if (numeros.length <= 11) {
@@ -99,21 +103,27 @@ export function SegundaViaModal({
     }
   };
 
-  const handleSearch = async (e: React.FormEvent) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCpfCnpj(formatarCpfCnpj(e.target.value));
+  };
+
+  const buscarBoletos = async (e: React.FormEvent) => {
     e.preventDefault();
     const numeros = cpfCnpj.replace(/\D/g, "");
+
     if (numeros.length !== 11 && numeros.length !== 14) {
-      setErrorSearch("Digite um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.");
+      setError(
+        "Por favor, digite um CPF (11 dígitos) ou CNPJ (14 dígitos) válido."
+      );
       return;
     }
 
-    setLoadingSearch(true);
-    setErrorSearch("");
-    setBoletosPublicos([]);
+    setLoading(true);
+    setError("");
+    setBoletos([]);
     setResumo(null);
 
     try {
-      // Usando fetch direto para endpoint público
       const response = await fetch(`${API_BASE_URL}${ENDPOINTS.INVOICES}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -124,219 +134,276 @@ export function SegundaViaModal({
       const data = await response.json();
 
       if (data.boletos && data.boletos.length > 0) {
-        setBoletosPublicos(data.boletos);
+        setBoletos(data.boletos);
         setResumo(data.resumo);
       } else {
-        setErrorSearch("Nenhuma fatura em aberto encontrada.");
+        setError("Nenhuma fatura em aberto encontrada para este CPF/CNPJ.");
       }
     } catch (err: any) {
-      setErrorSearch(
-        "Erro ao buscar faturas. Verifique o documento e tente novamente."
-      );
+      setError(err.message || "Erro ao buscar boletos. Tente novamente.");
     } finally {
-      setLoadingSearch(false);
+      setLoading(false);
     }
   };
 
-  // --- Lógica de Seleção/Detalhe ---
-  const handleSelectFatura = (
-    faturaData: any,
+  // === LÓGICA DE DETALHE (PIX/BOLETO) ===
+  const abrirDetalheFatura = (
+    id: number,
+    valor: string,
+    vencimento: string,
     initialTab: "boleto" | "pix" = "boleto"
   ) => {
-    // Normaliza os dados se vierem da busca pública para o formato DashboardFatura
-    const normalizedFatura: DashboardFatura = {
-      id: faturaData.id,
-      id_cliente: 0, // Não relevante aqui
-      valor: faturaData.valor,
-      data_vencimento: faturaData.data_vencimento,
-      status: faturaData.status === "Vencido" ? "V" : "A",
-      boleto: faturaData.boleto_pdf_link, // Link direto se existir
-    };
-
-    setSelectedFatura(normalizedFatura);
-    setViewTab(initialTab);
+    setActiveFaturaId(id);
     setMode("detail");
+    setViewTab(initialTab);
 
-    // Limpa estados anteriores
+    // Resetar dados anteriores
     setPdfBase64(null);
     setPixCode(null);
+    setIsCopied(false);
 
-    // Carrega dados iniciais
-    if (initialTab === "pix") loadPix(normalizedFatura.id);
-    else loadBoleto(normalizedFatura.id);
+    // Carregar dados iniciais
+    if (initialTab === "pix") loadPix(id);
+    else loadBoleto(id);
   };
 
   const loadBoleto = async (id: number) => {
+    setLoadingDetail(true);
     try {
-      setLoadingPayment(true);
+      // Se tiver link PDF direto (modo público), usamos ele?
+      // Não, aqui vamos padronizar usando o endpoint de API que pega o base64 para garantir consistência
       const data = await apiService.imprimirBoleto(id);
       setPdfBase64(data.base64_document);
     } catch (error) {
       console.error(error);
     } finally {
-      setLoadingPayment(false);
+      setLoadingDetail(false);
     }
   };
 
   const loadPix = async (id: number) => {
+    setLoadingDetail(true);
     try {
-      setLoadingPayment(true);
       const data = await apiService.getPixCode(id);
+      // Suporta tanto qrcode direto quanto imagem
       if (data.qrcode) setPixCode(data.qrcode);
+      else if (data.imagem) setPixCode(data.qrcode); // Fallback
     } catch (error) {
       console.error(error);
     } finally {
-      setLoadingPayment(false);
+      setLoadingDetail(false);
     }
   };
+
+  const handleCopyPix = () => {
+    if (pixCode) {
+      navigator.clipboard.writeText(pixCode);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    }
+  };
+
+  // Helpers de UI
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "Vencido":
+        return "text-red-400 bg-red-400/10 border-red-400/20";
+      case "Vence Hoje":
+        return "text-orange-400 bg-orange-400/10 border-orange-400/20";
+      default:
+        return "text-green-400 bg-green-400/10 border-green-400/20";
+    }
+  };
+
+  // Importando QrCode dinamicamente para evitar erro de SSR se necessário,
+  // mas aqui estamos usando o lucide-react para o icone e react-qr-code para o componente
+  // Certifique-se de ter instalado: npm install react-qr-code
+  const QRCodeComponent = require("react-qr-code");
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+      <div className="relative w-full max-w-4xl bg-fiber-card border border-white/10 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto flex flex-col">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-neutral-900 text-white shrink-0">
-          <h3 className="text-lg font-bold flex items-center gap-2">
-            {mode === "search" ? (
-              <>
-                <Search className="w-5 h-5 text-fiber-orange" /> Buscar Faturas
-              </>
-            ) : (
-              <>
-                <FileText className="w-5 h-5 text-fiber-orange" /> Detalhes do
-                Pagamento
-              </>
-            )}
-          </h3>
+        <div className="sticky top-0 bg-neutral-900 p-6 border-b border-white/5 flex justify-between items-center z-10 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-fiber-orange/10 rounded-lg">
+              {mode === "search" ? (
+                <FileText size={24} className="text-fiber-orange" />
+              ) : (
+                <QrCode size={24} className="text-fiber-orange" />
+              )}
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-white">
+                {mode === "search"
+                  ? "2ª Via de Boleto"
+                  : "Detalhes do Pagamento"}
+              </h2>
+              <p className="text-sm text-gray-400">
+                {mode === "search"
+                  ? "Consulte suas faturas por CPF ou CNPJ"
+                  : `Fatura #${activeFaturaId}`}
+              </p>
+            </div>
+          </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-white/5 rounded-full"
           >
-            <X className="w-5 h-5" />
+            <X size={20} />
           </button>
         </div>
 
-        {/* Content Scrollable */}
-        <div className="overflow-y-auto p-6">
+        {/* Content */}
+        <div className="p-6 overflow-y-auto">
           {/* MODO BUSCA */}
           {mode === "search" && (
-            <div className="space-y-6">
-              <form
-                onSubmit={handleSearch}
-                className="flex flex-col md:flex-row gap-4"
-              >
-                <div className="flex-grow relative">
-                  <CreditCard
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-                    size={20}
-                  />
-                  <input
-                    type="text"
-                    value={cpfCnpj}
-                    onChange={(e) =>
-                      setCpfCnpj(formatarCpfCnpj(e.target.value))
-                    }
-                    placeholder="Digite CPF ou CNPJ"
-                    className="w-full h-12 pl-12 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-fiber-orange focus:ring-1 focus:ring-fiber-orange"
-                    maxLength={18}
-                  />
+            <>
+              <form onSubmit={buscarBoletos} className="mb-8">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-grow relative">
+                    <CreditCard
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"
+                      size={20}
+                    />
+                    <input
+                      type="text"
+                      value={cpfCnpj}
+                      onChange={handleInputChange}
+                      placeholder="Digite seu CPF ou CNPJ"
+                      className="w-full h-14 pl-12 pr-4 bg-neutral-900 border border-white/10 rounded-xl text-white text-lg focus:outline-none focus:border-fiber-orange focus:ring-1 focus:ring-fiber-orange transition-all"
+                      maxLength={18}
+                      required
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    className="h-14 md:w-48 text-lg gap-2"
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="animate-spin" size={20} />{" "}
+                        Buscando...
+                      </>
+                    ) : (
+                      <>
+                        <Search size={20} /> Buscar
+                      </>
+                    )}
+                  </Button>
                 </div>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  disabled={loadingSearch}
-                  className="md:w-32"
-                >
-                  {loadingSearch ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    "Buscar"
-                  )}
-                </Button>
               </form>
 
-              {errorSearch && (
-                <div className="bg-red-50 text-red-600 p-4 rounded-xl flex items-center gap-2 text-sm">
-                  <AlertCircle size={16} /> {errorSearch}
+              {error && (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-start gap-3 mb-6 animate-fadeIn">
+                  <AlertCircle className="text-red-500 w-5 h-5 mt-0.5 flex-shrink-0" />
+                  <p className="text-red-400 text-sm">{error}</p>
                 </div>
               )}
 
               {/* Lista de Boletos Encontrados */}
-              {boletosPublicos.length > 0 && (
-                <div className="space-y-3">
-                  <h4 className="font-bold text-gray-900">
-                    Faturas Encontradas:
-                  </h4>
-                  {boletosPublicos.map((b) => (
+              {boletos.length > 0 && (
+                <div className="space-y-4 animate-fadeIn">
+                  <h3 className="text-white font-bold text-lg mb-4">
+                    Faturas Encontradas
+                  </h3>
+                  {boletos.map((boleto) => (
                     <div
-                      key={b.id}
-                      className="border border-gray-200 rounded-xl p-4 hover:border-fiber-orange/50 transition-all bg-gray-50 flex justify-between items-center gap-4"
+                      key={boleto.id}
+                      className="bg-neutral-900 border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all flex flex-col lg:flex-row justify-between gap-6"
                     >
-                      <div>
-                        <div className="text-sm text-gray-500">
-                          Vencimento: {b.data_vencimento}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-3">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(
+                              boleto.status
+                            )}`}
+                          >
+                            {boleto.status}
+                          </span>
                         </div>
-                        <div className="font-bold text-gray-900">
-                          R$ {b.valor}
-                        </div>
-                        <div
-                          className={`text-xs font-bold mt-1 ${
-                            b.status === "Vencido"
-                              ? "text-red-500"
-                              : "text-green-600"
-                          }`}
-                        >
-                          {b.status}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <span className="text-xs text-gray-500 uppercase block mb-1">
+                              Vencimento
+                            </span>
+                            <span className="text-lg font-bold text-white">
+                              {boleto.data_vencimento}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-xs text-gray-500 uppercase block mb-1">
+                              Valor
+                            </span>
+                            <span className="text-lg font-bold text-fiber-orange">
+                              R$ {boleto.valor}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex flex-col gap-3 min-w-[200px]">
                         <button
-                          onClick={() => handleSelectFatura(b, "pix")}
-                          className="p-2 bg-teal-50 text-teal-600 rounded-lg hover:bg-teal-100"
-                          title="Pagar com Pix"
+                          onClick={() =>
+                            abrirDetalheFatura(
+                              boleto.id,
+                              boleto.valor,
+                              boleto.data_vencimento,
+                              "pix"
+                            )
+                          }
+                          className="flex items-center justify-center gap-2 px-4 py-3 bg-fiber-green/10 text-fiber-green rounded-lg font-bold text-sm border border-fiber-green/30 hover:bg-fiber-green/20 transition-all"
                         >
-                          <QrCode size={20} />
+                          <QrCode size={18} /> Pagar com PIX
                         </button>
                         <button
-                          onClick={() => handleSelectFatura(b, "boleto")}
-                          className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"
-                          title="Boleto PDF"
+                          onClick={() =>
+                            abrirDetalheFatura(
+                              boleto.id,
+                              boleto.valor,
+                              boleto.data_vencimento,
+                              "boleto"
+                            )
+                          }
+                          className="flex items-center justify-center gap-2 px-4 py-3 bg-white/5 text-white rounded-lg font-bold text-sm border border-white/10 hover:bg-white/10 transition-all"
                         >
-                          <FileText size={20} />
+                          <FileText size={18} /> Boleto PDF
                         </button>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
-            </div>
+            </>
           )}
 
-          {/* MODO DETALHE (PAGAMENTO) */}
-          {mode === "detail" && selectedFatura && (
-            <div className="space-y-6">
-              {/* Botão Voltar (só se veio da busca) */}
+          {/* MODO DETALHE (VISUALIZAÇÃO HÍBRIDA) */}
+          {mode === "detail" && activeFaturaId && (
+            <div className="space-y-6 animate-fadeIn">
+              {/* Botão Voltar (se não estiver no modo direto da ClientArea) */}
               {!fatura && (
                 <button
                   onClick={() => setMode("search")}
-                  className="text-sm text-gray-500 hover:text-gray-900 flex items-center gap-1"
+                  className="text-sm text-gray-400 hover:text-white flex items-center gap-1 mb-4"
                 >
-                  ← Voltar para busca
+                  <ArrowLeft size={16} /> Voltar para lista
                 </button>
               )}
 
-              {/* Tabs */}
-              <div className="flex bg-gray-100 p-1 rounded-xl">
+              {/* Abas */}
+              <div className="flex bg-neutral-900 p-1 rounded-xl border border-white/10">
                 <button
                   onClick={() => {
                     setViewTab("boleto");
-                    loadBoleto(selectedFatura.id);
+                    loadBoleto(activeFaturaId);
                   }}
-                  className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+                  className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${
                     viewTab === "boleto"
-                      ? "bg-white shadow text-primary-600"
-                      : "text-gray-500"
+                      ? "bg-fiber-card border border-white/10 text-white shadow-lg"
+                      : "text-gray-500 hover:text-gray-300"
                   }`}
                 >
                   Boleto Bancário
@@ -344,62 +411,84 @@ export function SegundaViaModal({
                 <button
                   onClick={() => {
                     setViewTab("pix");
-                    loadPix(selectedFatura.id);
+                    loadPix(activeFaturaId);
                   }}
-                  className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+                  className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${
                     viewTab === "pix"
-                      ? "bg-white shadow text-teal-600"
-                      : "text-gray-500"
+                      ? "bg-fiber-card border border-white/10 text-fiber-green shadow-lg"
+                      : "text-gray-500 hover:text-gray-300"
                   }`}
                 >
                   PIX (QR Code)
                 </button>
               </div>
 
-              {/* Área de Conteúdo */}
-              <div className="min-h-[200px] flex flex-col items-center justify-center">
-                {loadingPayment ? (
-                  <Loader2 className="w-10 h-10 text-fiber-orange animate-spin" />
+              {/* Conteúdo da Aba */}
+              <div className="min-h-[300px] flex flex-col items-center justify-center bg-neutral-900/50 rounded-xl border border-white/5 p-8">
+                {loadingDetail ? (
+                  <div className="flex flex-col items-center text-gray-400">
+                    <Loader2 className="w-10 h-10 animate-spin mb-4 text-fiber-orange" />
+                    <p>
+                      Gerando {viewTab === "pix" ? "QR Code..." : "Boleto..."}
+                    </p>
+                  </div>
                 ) : viewTab === "boleto" ? (
-                  <div className="w-full text-center space-y-4">
-                    <FileText className="w-16 h-16 text-gray-300 mx-auto" />
+                  <div className="w-full text-center space-y-6">
+                    <FileText className="w-20 h-20 text-gray-700 mx-auto" />
                     {pdfBase64 ? (
-                      <a
-                        href={`data:application/pdf;base64,${pdfBase64}`}
-                        download={`fatura-${selectedFatura.id}.pdf`}
-                        className="inline-flex items-center justify-center w-full px-6 py-3 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition-colors shadow-lg shadow-primary-600/20"
-                      >
-                        <Download className="w-5 h-5 mr-2" /> Baixar PDF Agora
-                      </a>
+                      <>
+                        <p className="text-gray-300">
+                          Seu boleto foi gerado com sucesso!
+                        </p>
+                        <a
+                          href={`data:application/pdf;base64,${pdfBase64}`}
+                          download={`fatura-${activeFaturaId}.pdf`}
+                          className="inline-flex items-center justify-center w-full md:w-auto px-8 py-4 bg-fiber-orange text-white font-bold rounded-xl hover:bg-orange-600 transition-colors shadow-lg shadow-orange-900/20"
+                        >
+                          <Download className="w-5 h-5 mr-2" /> Baixar PDF
+                        </a>
+                      </>
                     ) : (
-                      <p className="text-gray-500">Erro ao gerar boleto.</p>
+                      <p className="text-red-400">
+                        Não foi possível gerar o PDF. Tente novamente.
+                      </p>
                     )}
                   </div>
                 ) : (
-                  <div className="w-full text-center space-y-4">
+                  <div className="w-full text-center space-y-6">
                     {pixCode ? (
                       <>
-                        <div className="bg-white p-2 border-2 border-gray-100 rounded-xl inline-block">
-                          <QRCode value={pixCode} size={180} />
+                        <div className="bg-white p-4 rounded-xl inline-block shadow-lg">
+                          {/* Renderização do QR Code */}
+                          <QRCodeComponent.default value={pixCode} size={200} />
                         </div>
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(pixCode);
-                            setCopied(true);
-                            setTimeout(() => setCopied(false), 2000);
-                          }}
-                          className="w-full flex items-center justify-center px-4 py-3 bg-gray-100 text-gray-800 font-medium rounded-xl hover:bg-gray-200 transition-colors"
-                        >
-                          {copied ? (
-                            <Check className="w-5 h-5 mr-2 text-green-600" />
-                          ) : (
-                            <Copy className="w-5 h-5 mr-2" />
-                          )}
-                          {copied ? "Copiado!" : "Copiar Código Pix"}
-                        </button>
+                        <div className="max-w-md mx-auto">
+                          <p className="text-sm text-gray-400 mb-2">
+                            Código PIX Copia e Cola:
+                          </p>
+                          <div className="bg-black/30 p-3 rounded-lg border border-white/10 text-xs text-gray-500 font-mono break-all mb-4">
+                            {pixCode.substring(0, 50)}...
+                          </div>
+                          <button
+                            onClick={handleCopyPix}
+                            className="w-full flex items-center justify-center px-4 py-3 bg-fiber-green text-white font-bold rounded-xl hover:bg-green-600 transition-colors"
+                          >
+                            {isCopied ? (
+                              <>
+                                <CheckCircle className="w-5 h-5 mr-2" />{" "}
+                                Copiado!
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-5 h-5 mr-2" /> Copiar Código
+                                Pix
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </>
                     ) : (
-                      <p className="text-gray-500">Gerando QR Code...</p>
+                      <p className="text-red-400">Erro ao gerar Pix.</p>
                     )}
                   </div>
                 )}
@@ -410,6 +499,6 @@ export function SegundaViaModal({
       </div>
     </div>
   );
-}
+};
 
 export default SegundaViaModal;
