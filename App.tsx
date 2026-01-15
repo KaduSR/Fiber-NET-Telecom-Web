@@ -1,7 +1,6 @@
 // spell:disable
 import { Headphones, Loader2 } from "lucide-react";
 import React, { Suspense, useEffect, useState } from "react";
-import { HISTORY_TEXT, PLANS } from "./constants";
 import ClientArea from "./src/components/Dashboard/ClientArea";
 import PlanCard from "./src/components/Dashboard/PlanCard";
 import Features from "./src/components/Features";
@@ -12,6 +11,7 @@ import Navbar from "./src/components/Layout/Navbar";
 import SegundaViaModal from "./src/components/Modals/SegundaViaModal";
 import SupportModal from "./src/components/Modals/SupportModal";
 import NewsSection from "./src/components/NewsSection";
+import { HISTORY_TEXT, PLANS } from "./src/types/constants";
 
 // Lazy load heavier components
 const Ethics = React.lazy(() => import("./src/components/Ethics"));

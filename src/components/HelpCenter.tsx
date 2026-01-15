@@ -1,16 +1,16 @@
-import React, { useState } from "react";
 import {
-  Search,
-  MessageCircle,
   ChevronDown,
   ChevronRight,
-  Wrench,
   DollarSign,
-  Wifi,
   HelpCircle,
+  MessageCircle,
+  Search,
+  Wifi,
+  Wrench,
 } from "lucide-react";
+import React, { useState } from "react";
+import { CONTACT_INFO } from "../types/constants";
 import Button from "./Button";
-import { CONTACT_INFO } from "../../constants";
 
 interface HelpCenterProps {
   onNavigate?: (page: string) => void;

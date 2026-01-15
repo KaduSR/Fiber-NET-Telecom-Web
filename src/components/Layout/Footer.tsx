@@ -1,6 +1,6 @@
 import { ChevronRight, Instagram, PhoneCall, Star } from "lucide-react";
 import React from "react";
-import { CONTACT_INFO } from "../../../constants";
+import { CONTACT_INFO } from "../../types/constants";
 import FiberNetLogo from "../FiberNetLogo";
 
 interface FooterProps {

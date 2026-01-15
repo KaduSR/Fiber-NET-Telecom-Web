@@ -1,16 +1,16 @@
 // cspell: disable
 import {
   ExternalLink,
+  FileAxis3d,
   Headphones,
   MessageCircle,
   PhoneForwarded,
   X,
-  FileAxis3d,
 } from "lucide-react";
 import React, { useEffect } from "react";
+import { CONTACT_INFO } from "../../types/constants";
 import Button from "../Button";
 import FiberNetTextLogo from "../FiberNetTextLogo";
-import { CONTACT_INFO } from "./../../../constants";
 
 interface SupportModalProps {
   isOpen: boolean;
