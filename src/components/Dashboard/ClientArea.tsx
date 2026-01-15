@@ -10,6 +10,7 @@ import {
   Bot,
   CheckCircle,
   Clock,
+  Copy,
   Download,
   Eye,
   FileSignature,
@@ -22,6 +23,7 @@ import {
   MapPin,
   Power,
   Printer,
+  QrCode,
   Router,
   ScrollText,
   Send,
@@ -34,15 +36,9 @@ import {
 } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { apiService } from "../../services/apiService";
-import {
-  ChatMessage,
-  Consumo,
-  DashboardResponse,
-  Fatura,
-} from "../../types/api";
+import { ChatMessage, Consumo, DashboardResponse } from "../../types/api";
 import AIInsights from "../AIInsights";
 import Button from "../Button";
-import SegundaViaModal from "../Modals/SegundaViaModal"; // <--- IMPORTADO O MODAL NOVO
 
 const DASH_CACHE_KEY = "fiber_dashboard_cache_v5_forced";
 
@@ -57,7 +53,7 @@ const ConsumptionChart: React.FC<{ history?: Consumo["history"] }> = ({
   history,
 }) => {
   const [period, setPeriod] = useState<"daily" | "monthly">("daily");
-  const [activePoint] = useState<{
+  const [activePoint, setActivePoint] = useState<{
     label: string;
     download: number;
     upload: number;
@@ -186,6 +182,32 @@ const ConsumptionChart: React.FC<{ history?: Consumo["history"] }> = ({
               strokeLinejoin="round"
               className="transition-all duration-500 drop-shadow-lg"
             />
+            {data.map((d: any, i: number) => (
+              <g key={i} className="group/point">
+                <rect
+                  x={getX(i) - 2}
+                  y="0"
+                  width="4"
+                  height="100"
+                  fill="transparent"
+                  className="cursor-pointer"
+                  onMouseEnter={() => setActivePoint(d)}
+                  onMouseLeave={() => setActivePoint(null)}
+                />
+                <circle
+                  cx={getX(i)}
+                  cy={getY(d.download)}
+                  r="1.5"
+                  className="fill-[#1E90FF] opacity-0 group-hover/point:opacity-100"
+                />
+                <circle
+                  cx={getX(i)}
+                  cy={getY(d.upload)}
+                  r="1.5"
+                  className="fill-[#FF6B00] opacity-0 group-hover/point:opacity-100"
+                />
+              </g>
+            ))}
           </svg>
         </div>
         <div className="absolute bottom-0 left-8 right-0 flex justify-between text-[10px] text-gray-400 font-medium px-2">
@@ -256,20 +278,17 @@ const ClientArea: React.FC = () => {
   const [loginError, setLoginError] = useState("");
   const [showLoginPass, setShowLoginPass] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
-
-  // === NOVOS ESTADOS PARA O MODAL UNIFICADO ===
-  const [isSegundaViaOpen, setIsSegundaViaOpen] = useState(false);
-  const [selectedFatura, setSelectedFatura] = useState<Fatura | null>(null);
-  const [modalInitialMode, setModalInitialMode] = useState<"boleto" | "pix">(
-    "boleto"
-  );
-
+  const [isPixModalOpen, setPixModalOpen] = useState(false);
+  const [activePixCode, setActivePixCode] = useState("");
+  const [isPixCopied, setIsPixCopied] = useState(false);
+  // Removido: copiedBarcodeId
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState("aberto");
   const [passwordChangeStatus, setPasswordChangeStatus] = useState<{
     type: "success" | "error";
     message: string;
   } | null>(null);
-  const [showNewPass] = useState(false);
+  // Mantendo showNewPass pois é usado no input type
+  const [showNewPass, setShowNewPass] = useState(false);
   const [actionStatus, setActionStatus] = useState<{
     [key: string]: {
       status: "idle" | "loading" | "success" | "error";
@@ -301,13 +320,6 @@ const ClientArea: React.FC = () => {
   const [chatInput, setChatInput] = useState("");
   const [isChatTyping, setIsChatTyping] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
-
-  // === HANDLER PARA O NOVO MODAL ===
-  const handleOpenSegundaVia = (fatura: Fatura, mode: "boleto" | "pix") => {
-    setSelectedFatura(fatura);
-    setModalInitialMode(mode);
-    setIsSegundaViaOpen(true);
-  };
 
   const fetchDashboardData = async () => {
     setIsRefetching(true);
@@ -518,6 +530,21 @@ const ClientArea: React.FC = () => {
     }
   }, [chatMessages, activeTab]);
 
+  const handleCopy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    // setCopiedBarcodeId removido
+  };
+  const handleOpenPixModal = (code: string) => {
+    setActivePixCode(code);
+    setPixModalOpen(true);
+    setIsPixCopied(false);
+  };
+  const handleCopyPix = () => {
+    navigator.clipboard.writeText(activePixCode);
+    setIsPixCopied(true);
+    setTimeout(() => setIsPixCopied(false), 2000);
+  };
+
   const TABS = [
     { id: "dashboard", label: "Visão Geral", icon: LayoutDashboard },
     { id: "ai_support", label: "Suporte IA", icon: Bot, badge: "NOVO" },
@@ -529,65 +556,42 @@ const ClientArea: React.FC = () => {
     { id: "settings", label: "Configurações", icon: Settings },
   ];
 
+  // === CÁLCULO DE JUROS E MULTA (IXC: Multa 2% + Juros 0.033% ao dia) ===
+  const calcularEstimativa = (valor: number, dataVencimento: string) => {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const venc = new Date(dataVencimento);
+    venc.setHours(0, 0, 0, 0);
+
+    // Se não venceu ainda (ou vence hoje), retorna null (sem juros)
+    if (hoje <= venc) return null;
+
+    // Diferença em dias
+    const diffTime = Math.abs(hoje.getTime() - venc.getTime());
+    const diasAtraso = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    const multa = valor * 0.02; // 2%
+    const juros = valor * (0.00033 * diasAtraso); // 0.033% ao dia
+    const total = valor + multa + juros;
+
+    return {
+      valorOriginal: valor.toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+      }),
+      totalAtualizado: total.toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+      }),
+      diasAtraso: diasAtraso,
+      multa: multa,
+      juros: juros,
+    };
+  };
+
   // --- RENDER ---
   if (isLoading)
     return (
-      <div className="min-h-[70vh]  flex items-center justify-center px-4 py-12 animate-fade-in">
-        <div className="max-w-md w-full bg-black rounded-2xl shadow-xl border border-gray-100 p-8">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-primary-50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Lock className="w-8 h-8 text-white" />
-            </div>
-            <h2 className="text-2xl font-bold text-white">Área do Cliente</h2>
-            <p className="text-white text-sm mt-2">
-              Acesse suas faturas e serviços
-            </p>
-          </div>
-
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-white mb-1">
-                Email / CPF
-              </label>
-              <input
-                type="text"
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:outline-none transition-all"
-                placeholder="Seu login"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-white mb-1">
-                Senha
-              </label>
-              <input
-                type="password"
-                value={loginPass}
-                onChange={(e) => setLoginPass(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:outline-none transition-all"
-                placeholder="Sua senha"
-                required
-              />
-            </div>
-
-            {loginError && (
-              <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg flex items-center gap-2">
-                <AlertCircle size={16} /> {loginError}
-              </div>
-            )}
-
-            <Button
-              fullWidth
-              type="submit"
-              variant="primary"
-              disabled={loginLoading}
-              className="py-3"
-            >
-              {loginLoading ? "Entrando..." : "Acessar Conta"}
-            </Button>
-          </form>
       <div className="min-h-screen bg-fiber-dark flex items-center justify-center">
         <Loader2 size={48} className="text-fiber-orange animate-spin" />
       </div>
@@ -813,37 +817,39 @@ const ClientArea: React.FC = () => {
 
                   <AIInsights data={dashboardData.ai_analysis} />
 
-                  {dashboardData.contratos.map((contrato, index) => {
+                  {dashboardData.contratos.map((contrato) => {
                     const loginsDoContrato = dashboardData.logins.filter(
                       (l) => Number(l.contrato_id) === Number(contrato.id)
                     );
-                    const hoje = new Date();
-                    hoje.setHours(0, 0, 0, 0);
+
                     const faturasDoContrato = dashboardData.faturas.filter(
                       (f) => {
-                        let perteceAoContrato = false;
+                        // 1. Verifica se pertence ao contrato
+                        const isDoContrato = f.contrato_id
+                          ? Number(f.contrato_id) === Number(contrato.id)
+                          : true;
 
-                        if (f.contrato_id) {
-                          perteceAoContrato =
-                            Number(f.contrato_id) === Number(contrato.id);
-                        } else {
-                          // Se a fatura não tiver contrato_id, verificar pelos logins
-                          perteceAoContrato = index === 0;
-                        }
-                        if (!perteceAoContrato) return false;
+                        if (!isDoContrato) return false;
 
+                        // 2. Filtra Status (Apenas Abertas ou Parciais)
                         if (f.status !== "A" && f.status !== "P") return false;
+
+                        // 3. Regra de Data: Mostrar apenas Vencidos ou do Mês Atual
+                        const hoje = new Date();
+                        hoje.setHours(0, 0, 0, 0);
+
                         const vencimento = new Date(f.data_vencimento);
                         vencimento.setHours(0, 0, 0, 0);
 
-                        const isVencida = vencimento < hoje;
+                        const isVencido = vencimento < hoje;
                         const isDoMes =
                           vencimento.getMonth() === hoje.getMonth() &&
                           vencimento.getFullYear() === hoje.getFullYear();
 
-                        return isVencida || isDoMes;
+                        return isVencido || isDoMes;
                       }
                     );
+
                     const notasDoContrato =
                       dashboardData.notas?.filter((n) =>
                         n.contrato_id
@@ -856,6 +862,7 @@ const ClientArea: React.FC = () => {
                         key={contrato.id}
                         className="bg-neutral-900 border border-white/10 rounded-xl p-6 mb-6 shadow-lg"
                       >
+                        {/* Header Contrato */}
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-white/5 pb-4">
                           <div>
                             <h3 className="text-xl font-bold text-white flex items-center gap-2">
@@ -884,6 +891,7 @@ const ClientArea: React.FC = () => {
                           </span>
                         </div>
 
+                        {/* Conexões */}
                         <div className="mb-8">
                           <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
                             <Router size={14} /> Conexões e Equipamentos
@@ -915,17 +923,11 @@ const ClientArea: React.FC = () => {
                                   </div>
 
                                   <div className="flex items-center gap-6 text-xs text-gray-400">
-                                    <div
-                                      className="flex items-center gap-2"
-                                      title="Modelo da ONU"
-                                    >
+                                    <div className="flex items-center gap-2">
                                       <Router size={14} />{" "}
                                       {login.ont_modelo || "ONU Padrão"}
                                     </div>
-                                    <div
-                                      className="flex items-center gap-2"
-                                      title="Sinal Óptico"
-                                    >
+                                    <div className="flex items-center gap-2">
                                       <Activity size={14} />
                                       <span
                                         className={
@@ -940,10 +942,7 @@ const ClientArea: React.FC = () => {
                                           "- dBm"}
                                       </span>
                                     </div>
-                                    <div
-                                      className="flex items-center gap-2"
-                                      title="Tempo Conectado"
-                                    >
+                                    <div className="flex items-center gap-2">
                                       <Clock size={14} />{" "}
                                       {login.tempo_conectado || "Recente"}
                                     </div>
@@ -958,87 +957,142 @@ const ClientArea: React.FC = () => {
                           )}
                         </div>
 
+                        {/* Financeiro */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                           <div>
                             <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
                               <FileText size={14} /> Faturas Pendentes
                             </h4>
                             <div className="space-y-3">
-                              {faturasDoContrato.length > 0 ? (
-                                faturasDoContrato.map((fatura) => {
-                                  // CÁLCULO DE DIAS (Lógica Nova)
-                                  const dataVenc = new Date(
-                                    fatura.data_vencimento
-                                  );
-                                  dataVenc.setHours(0, 0, 0, 0);
+                              {faturasDoContrato.filter((f) => f.status === "A")
+                                .length > 0 ? (
+                                faturasDoContrato
+                                  .filter((f) => f.status === "A")
+                                  .map((fatura) => {
+                                    // 1. CÁLCULO DE DIAS RESTANTES (Resolve o erro "diasRestantes is not defined")
+                                    const hoje = new Date();
+                                    hoje.setHours(0, 0, 0, 0);
+                                    const venc = new Date(
+                                      fatura.data_vencimento
+                                    );
+                                    venc.setHours(0, 0, 0, 0);
+                                    const diffTime =
+                                      venc.getTime() - hoje.getTime();
+                                    const diasRestantes = Math.ceil(
+                                      diffTime / (1000 * 60 * 60 * 24)
+                                    );
 
-                                  // Diferença em milissegundos convertida para dias
-                                  const diffTime =
-                                    dataVenc.getTime() - hoje.getTime();
-                                  const diasRestantes = Math.ceil(
-                                    diffTime / (1000 * 60 * 60 * 24)
-                                  );
+                                    // 2. CÁLCULO DE ESTIMATIVA DE JUROS
+                                    const valorNum = parseFloat(fatura.valor);
+                                    const estimativa = calcularEstimativa(
+                                      valorNum,
+                                      fatura.data_vencimento
+                                    );
 
-                                  return (
-                                    <div
-                                      key={fatura.id}
-                                      className="flex justify-between items-center bg-white/5 p-3 rounded-lg border-l-2 border-fiber-orange hover:bg-white/10 transition-colors"
-                                    >
-                                      <div>
-                                        <p className="text-white font-bold text-sm">
-                                          R$ {fatura.valor}
-                                        </p>
-
-                                        <div className="flex flex-col">
-                                          <p className="text-[10px] text-gray-400">
-                                            Venc: {fatura.data_vencimento}
-                                          </p>
-
-                                          {/* TEXTO DE DIAS VENCIDOS */}
-                                          <p className="text-[10px] font-bold mt-0.5">
-                                            {diasRestantes < 0 ? (
-                                              <span className="text-red-400">
-                                                Vencido há{" "}
-                                                {Math.abs(diasRestantes)} dias
+                                    return (
+                                      <div
+                                        key={fatura.id}
+                                        className="flex justify-between items-center bg-white/5 p-3 rounded-lg border-l-2 border-fiber-orange hover:bg-white/10 transition-colors"
+                                      >
+                                        <div>
+                                          {/* EXIBIÇÃO CONDICIONAL: COM OU SEM JUROS */}
+                                          {estimativa && diasRestantes < 0 ? (
+                                            <div className="flex flex-col">
+                                              <span className="text-[10px] text-gray-500 line-through decoration-red-500/50">
+                                                {estimativa.valorOriginal}
                                               </span>
-                                            ) : diasRestantes === 0 ? (
-                                              <span className="text-yellow-400">
-                                                Vence hoje!
-                                              </span>
-                                            ) : (
-                                              <span className="text-green-400">
-                                                Vence em {diasRestantes} dias
-                                              </span>
-                                            )}
-                                          </p>
+                                              <div className="flex items-center gap-2">
+                                                <span className="text-white font-bold text-sm">
+                                                  {estimativa.totalAtualizado}
+                                                </span>
+                                                <span className="bg-red-500/20 text-red-400 text-[9px] px-1 rounded border border-red-500/30 font-bold">
+                                                  EST.
+                                                </span>
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <p className="text-white font-bold text-sm">
+                                              R${" "}
+                                              {valorNum.toLocaleString(
+                                                "pt-BR",
+                                                {
+                                                  style: "currency",
+                                                  currency: "BRL",
+                                                }
+                                              )}
+                                            </p>
+                                          )}
+
+                                          <div className="flex flex-col">
+                                            <p className="text-[10px] text-gray-400">
+                                              Venc:{" "}
+                                              {new Date(
+                                                fatura.data_vencimento
+                                              ).toLocaleDateString("pt-BR")}
+                                            </p>
+
+                                            <p className="text-[10px] font-bold mt-0.5">
+                                              {diasRestantes < 0 ? (
+                                                <span className="text-red-400">
+                                                  Vencido há{" "}
+                                                  {Math.abs(diasRestantes)} dias
+                                                </span>
+                                              ) : diasRestantes === 0 ? (
+                                                <span className="text-yellow-400">
+                                                  Vence hoje!
+                                                </span>
+                                              ) : (
+                                                <span className="text-green-400">
+                                                  Vence em {diasRestantes} dias
+                                                </span>
+                                              )}
+                                            </p>
+                                          </div>
+                                        </div>
+
+                                        <div className="flex gap-2">
+                                          {fatura.pix_txid && (
+                                            <button
+                                              onClick={() =>
+                                                handleOpenPixModal(
+                                                  fatura.pix_txid!
+                                                )
+                                              }
+                                              className="text-[10px] bg-fiber-green/20 text-fiber-green px-2 py-1 rounded hover:bg-fiber-green/30 transition font-bold flex items-center gap-1"
+                                            >
+                                              <QrCode size={10} /> PIX
+                                            </button>
+                                          )}
+                                          {fatura.linha_digitavel && (
+                                            <button
+                                              onClick={() =>
+                                                handleCopy(
+                                                  fatura.linha_digitavel!,
+                                                  String(fatura.id)
+                                                )
+                                              }
+                                              className="text-[10px] bg-white/10 text-white px-2 py-1 rounded hover:bg-white/20 transition flex items-center gap-1"
+                                            >
+                                              <Copy size={10} /> Código
+                                            </button>
+                                          )}
                                         </div>
                                       </div>
-                                      <div className="flex gap-2">
-                                        {/* Seus botões de ação aqui... */}
-                                        <button
-                                          onClick={() =>
-                                            handleOpenSegundaVia(fatura, "pix")
-                                          }
-                                          className="text-[10px] bg-fiber-green/20 text-fiber-green px-2 py-1 rounded hover:bg-fiber-green/30 transition font-bold flex items-center gap-1"
-                                        >
-                                          PIX
-                                        </button>
-                                      </div>
-                                    </div>
-                                  );
-                                })
+                                    );
+                                  })
                               ) : (
                                 <p className="text-gray-500 text-sm italic flex items-center gap-2">
                                   <CheckCircle
                                     size={14}
                                     className="text-green-500"
                                   />{" "}
-                                  Tudo em dia!
+                                  Nenhuma fatura pendente.
                                 </p>
                               )}
                             </div>
                           </div>
 
+                          {/* Notas */}
                           <div>
                             <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
                               <ScrollText size={14} /> Últimas Notas Fiscais
@@ -1092,7 +1146,7 @@ const ClientArea: React.FC = () => {
 
               {/* === SUPORTE IA === */}
               {activeTab === "ai_support" && (
-                <div className="h-[700px] flex flex-col">
+                <div className="h-[600px] flex flex-col">
                   <div className="mb-6 flex justify-between items-center">
                     <div>
                       <h2 className="text-2xl font-bold text-white flex items-center gap-2">
@@ -1106,6 +1160,7 @@ const ClientArea: React.FC = () => {
                   </div>
 
                   <div className="flex-grow bg-neutral-900 border border-white/10 rounded-xl overflow-hidden flex flex-col">
+                    {/* Área de Mensagens */}
                     <div className="flex-grow p-4 overflow-y-auto space-y-4 scrollbar-thin scrollbar-thumb-fiber-orange/20">
                       {chatMessages.map((msg) => (
                         <div
@@ -1144,6 +1199,7 @@ const ClientArea: React.FC = () => {
                       <div ref={chatEndRef} />
                     </div>
 
+                    {/* Input */}
                     <form
                       onSubmit={handleSendMessage}
                       className="p-4 bg-neutral-800 border-t border-white/5 flex gap-2"
@@ -1168,7 +1224,7 @@ const ClientArea: React.FC = () => {
                 </div>
               )}
 
-              {/* === INVOICES TAB (ATUALIZADA) === */}
+              {/* --- FATURAS (LISTA SIMPLES) --- */}
               {activeTab === "invoices" && (
                 <div>
                   <h2 className="text-2xl font-bold text-white mb-6">
@@ -1211,25 +1267,20 @@ const ClientArea: React.FC = () => {
                             </p>
                           </div>
                           <div className="flex gap-2">
-                            {/* BOTÕES ATUALIZADOS */}
-                            <Button
-                              variant="secondary"
-                              onClick={() =>
-                                handleOpenSegundaVia(invoice, "boleto")
-                              }
-                              className="!py-1 !px-3 !text-xs"
-                            >
-                              Boleto
-                            </Button>
-                            <Button
-                              variant="outline"
-                              onClick={() =>
-                                handleOpenSegundaVia(invoice, "pix")
-                              }
-                              className="!py-1 !px-3 !text-xs text-green-500 border-green-500/20"
-                            >
-                              Pix
-                            </Button>
+                            {invoice.linha_digitavel && (
+                              <Button
+                                variant="secondary"
+                                onClick={() =>
+                                  handleCopy(
+                                    invoice.linha_digitavel!,
+                                    String(invoice.id)
+                                  )
+                                }
+                                className="!py-1 !px-3 !text-xs"
+                              >
+                                Copiar
+                              </Button>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -1446,51 +1497,6 @@ const ClientArea: React.FC = () => {
                 </div>
               )}
 
-              {activeTab === "notes" && (
-                <div>
-                  <h2 className="text-2xl font-bold text-white mb-6">
-                    Notas Fiscais
-                  </h2>
-                  <div className="space-y-2">
-                    {(dashboardData?.notas || []).map((nota) => (
-                      <div
-                        key={nota.id}
-                        className="flex justify-between items-center p-4 bg-neutral-900 border border-white/5 rounded-xl"
-                      >
-                        <div>
-                          <p className="text-sm font-bold text-white">
-                            Nota #{nota.numero_nota}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {nota.data_emissao}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <span className="font-mono text-white">
-                            R$ {nota.valor}
-                          </span>
-                          {nota.link_pdf && (
-                            <a
-                              href={nota.link_pdf}
-                              target="_blank"
-                              className="text-fiber-blue hover:underline text-xs flex items-center gap-1"
-                            >
-                              <Download size={12} /> PDF
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                    {(!dashboardData?.notas ||
-                      dashboardData.notas.length === 0) && (
-                      <p className="text-gray-500 italic">
-                        Nenhuma nota fiscal encontrada.
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-
               {activeTab === "settings" && (
                 <div>
                   <h2 className="text-2xl font-bold text-white mb-6">
@@ -1529,13 +1535,38 @@ const ClientArea: React.FC = () => {
         </div>
       </div>
 
-      {/* === NOVO MODAL UNIFICADO === */}
-      <SegundaViaModal
-        isOpen={isSegundaViaOpen}
-        onClose={() => setIsSegundaViaOpen(false)}
-        fatura={selectedFatura}
-        initialViewMode={modalInitialMode}
-      />
+      {isPixModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-fiber-card border border-white/10 rounded-2xl p-6 max-w-md w-full relative">
+            <button
+              onClick={() => setPixModalOpen(false)}
+              className="absolute top-3 right-3 text-gray-500 hover:text-white"
+            >
+              <X size={20} />
+            </button>
+            <h3 className="text-xl font-bold text-white text-center mb-4">
+              Pagamento PIX
+            </h3>
+            <div className="bg-white p-4 rounded-lg mx-auto w-fit mb-4">
+              <div className="w-48 h-48 bg-neutral-800 flex items-center justify-center">
+                <QrCode size={100} className="text-white" />
+              </div>
+            </div>
+            <div className="bg-neutral-900 p-2 rounded mb-4 overflow-hidden">
+              <p className="text-xs text-gray-500 font-mono truncate">
+                {activePixCode}
+              </p>
+            </div>
+            <Button
+              onClick={handleCopyPix}
+              fullWidth
+              className="gap-2 !bg-fiber-green hover:!bg-green-600"
+            >
+              {isPixCopied ? "Copiado!" : "Copiar Código"}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
