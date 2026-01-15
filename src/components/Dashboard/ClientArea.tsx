@@ -532,6 +532,62 @@ const ClientArea: React.FC = () => {
   // --- RENDER ---
   if (isLoading)
     return (
+      <div className="min-h-[70vh]  flex items-center justify-center px-4 py-12 animate-fade-in">
+        <div className="max-w-md w-full bg-black rounded-2xl shadow-xl border border-gray-100 p-8">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-primary-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-8 h-8 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-white">Área do Cliente</h2>
+            <p className="text-white text-sm mt-2">
+              Acesse suas faturas e serviços
+            </p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-white mb-1">
+                Email / CPF
+              </label>
+              <input
+                type="text"
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:outline-none transition-all"
+                placeholder="Seu login"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-white mb-1">
+                Senha
+              </label>
+              <input
+                type="password"
+                value={loginPass}
+                onChange={(e) => setLoginPass(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:outline-none transition-all"
+                placeholder="Sua senha"
+                required
+              />
+            </div>
+
+            {loginError && (
+              <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg flex items-center gap-2">
+                <AlertCircle size={16} /> {loginError}
+              </div>
+            )}
+
+            <Button
+              fullWidth
+              type="submit"
+              variant="primary"
+              disabled={loginLoading}
+              className="py-3"
+            >
+              {loginLoading ? "Entrando..." : "Acessar Conta"}
+            </Button>
+          </form>
       <div className="min-h-screen bg-fiber-dark flex items-center justify-center">
         <Loader2 size={48} className="text-fiber-orange animate-spin" />
       </div>
