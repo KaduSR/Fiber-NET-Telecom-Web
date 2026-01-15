@@ -9,7 +9,7 @@ import {
 import React, { useEffect } from "react";
 import Button from "../Button";
 import FiberNetTextLogo from "../FiberNetTextLogo";
-import { CONTACT_INFO } from "./../../../constants";
+import { CONTACT_INFO } from "./../../types/constants";
 
 interface SupportModalProps {
   isOpen: boolean;

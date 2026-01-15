@@ -1,15 +1,16 @@
-import React, { useState, Suspense, useEffect } from "react";
-import Navbar from "./src/components/Layout/Navbar";
-import Hero from "./src/components/Layout/Hero";
-import Features from "./src/components/Features";
-import Footer from "./src/components/Layout/Footer";
-import SupportModal from "./src/components/Modals/SupportModal";
+import { Headphones, Loader2 } from "lucide-react";
+import React, { Suspense, useEffect, useState } from "react";
 import ClientArea from "./src/components/Dashboard/ClientArea";
-import NewsSection from "./src/components/NewsSection";
-import { PLANS, HISTORY_TEXT } from "./constants";
-import { Loader2, Headphones } from "lucide-react";
-import FiberNetTextLogo from "./src/components/FiberNetTextLogo";
 import PlanCard from "./src/components/Dashboard/PlanCard";
+import Features from "./src/components/Features";
+import FiberNetTextLogo from "./src/components/FiberNetTextLogo";
+import Footer from "./src/components/Layout/Footer";
+import Hero from "./src/components/Layout/Hero";
+import Navbar from "./src/components/Layout/Navbar";
+import SegundaViaModal from "./src/components/Modals/SegundaViaModal";
+import SupportModal from "./src/components/Modals/SupportModal";
+import NewsSection from "./src/components/NewsSection";
+import { HISTORY_TEXT, PLANS } from "./src/types/constants";
 
 // Lazy load heavier components
 const Ethics = React.lazy(() => import("./src/components/Ethics"));
@@ -23,9 +24,7 @@ const ServiceStatus = React.lazy(
 );
 const LegalCompliance = React.lazy(
   () => import("./src/components/LegalCompliance")
-);import SegundaViaModal from './src/components/Modals/SegundaViaModal';
-
-
+);
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState("home");
