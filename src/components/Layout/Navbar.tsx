@@ -139,13 +139,13 @@ const Navbar: React.FC<NavbarProps> = ({
                 <Button
                   variant="primary"
                   className="!py-2 !px-5 text-xs font-bold uppercase tracking-wider rounded-full"
-                  /* onClick={() => onNavigate("client-area")} */
-                  onClick={() =>
-                    window.open(
-                      "https://centralfiber.online/central_assinante_web/login",
-                      "_blank"
-                    )
-                  }
+                  onClick={() => onNavigate("client-area")}
+                  // onClick={() =>
+                  //   window.open(
+                  //     "https://centralfiber.online/central_assinante_web/login",
+                  //     "_blank"
+                  //   )
+                  // }
                 >
                   Área do Cliente
                 </Button>
