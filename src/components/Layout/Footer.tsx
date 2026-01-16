@@ -6,8 +6,13 @@ import {
   Star,
 } from "lucide-react";
 import React from "react";
+<<<<<<< HEAD
 import { CONTACT_INFO } from "../../constants";
 import FiberNetLogo from "./FiberNetLogo";
+=======
+import { CONTACT_INFO } from "../../types/constants";
+import FiberNetLogo from "../FiberNetLogo";
+>>>>>>> main
 
 interface FooterProps {
   onNavigate?: (page: string) => void;

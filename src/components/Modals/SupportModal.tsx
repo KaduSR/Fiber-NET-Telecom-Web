@@ -6,9 +6,15 @@ import {
   X,
 } from "lucide-react";
 import React, { useEffect } from "react";
+<<<<<<< HEAD
 import { CONTACT_INFO } from "../../constants";
 import Button from "./Button";
 import FiberNetTextLogo from "./FiberNetTextLogo";
+=======
+import Button from "../Button";
+import FiberNetTextLogo from "../FiberNetTextLogo";
+import { CONTACT_INFO } from "./../../types/constants";
+>>>>>>> main
 
 interface SupportModalProps {
   isOpen: boolean;
