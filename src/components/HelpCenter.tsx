@@ -10,7 +10,7 @@ import {
   HelpCircle,
 } from "lucide-react";
 import Button from "./Button";
-import { CONTACT_INFO } from "../../constants";
+import { CONTACT_INFO } from "../types/constants";
 
 interface HelpCenterProps {
   onNavigate?: (page: string) => void;
