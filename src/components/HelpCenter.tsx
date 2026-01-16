@@ -9,7 +9,7 @@ import {
   Wrench,
 } from "lucide-react";
 import React, { useState } from "react";
-import { CONTACT_INFO } from "../../constants";
+import { CONTACT_INFO } from "../types/constants";
 import Button from "./Button";
 
 interface HelpCenterProps {
@@ -168,11 +168,7 @@ IMPORTANTE: Instalação 100% GRATUITA!`,
     },
   ],
 };
-
-const HelpCenter: React.FC<HelpCenterProps> = ({
-  onNavigate,
-  onOpenSegundaVia,
-}) => {
+const HelpCenter: React.FC<HelpCenterProps> = ({ onOpenSegundaVia }) => {
   const [activeCategory, setActiveCategory] = useState<string>("Financeiro");
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -198,7 +194,7 @@ const HelpCenter: React.FC<HelpCenterProps> = ({
   const currentQuestions = (FAQ_DATA[activeCategory] || []).filter(
     (item) =>
       item.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.answer.toLowerCase().includes(searchTerm.toLowerCase())
+      item.answer.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   return (
@@ -288,9 +284,9 @@ const HelpCenter: React.FC<HelpCenterProps> = ({
                   window.open(
                     `https://wa.me/55${CONTACT_INFO.whatsapp.replace(
                       /\D/g,
-                      ""
+                      "",
                     )}`,
-                    "_blank"
+                    "_blank",
                   )
                 }
                 className="!text-xs"
@@ -405,9 +401,9 @@ const HelpCenter: React.FC<HelpCenterProps> = ({
                   window.open(
                     `https://wa.me/55${CONTACT_INFO.whatsapp.replace(
                       /\D/g,
-                      ""
+                      "",
                     )}`,
-                    "_blank"
+                    "_blank",
                   )
                 }
               >
