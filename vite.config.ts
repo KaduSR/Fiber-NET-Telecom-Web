@@ -19,16 +19,7 @@ export default defineConfig({
   optimizeDeps: {
     include: ["@google/genai"],
   },
-  build: {
-    rollupOptions: {
-      external: [
-        "jspdf",
-        "leaflet",
-        "react-leaflet",
-        "@vercel/speed-insights/react",
-      ],
-    },
-  },
+  build: {},
   server: {
     host: true,
     proxy: {
