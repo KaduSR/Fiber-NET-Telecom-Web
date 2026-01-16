@@ -31,6 +31,7 @@ interface BoletoView {
   vencimentoFormatado: string;
   valorFormatado: string;
   valor: number;
+  valorRecebido?: number;
   linhaDigitavel: string | null;
   pixCopiaECola: string | null;
   pixImagem?: string | null;
@@ -66,13 +67,22 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       if (fatura) {
-        // MODO CLIENTE: Converte a fatura recebida para o formato de visualização
+        const dataVencimento = new Date(fatura.data_vencimento);
+        const hoje = new Date();
+        const diffTempo = dataVencimento.getTime() - hoje.getTime();
+        const diasDiff = Math.ceil(diffTempo / (1000 * 60 * 60 * 24));
+
         const faturaAdaptada: BoletoView = {
           id: fatura.id,
           documento: fatura.documento || `Fat-${fatura.id}`,
-          vencimentoFormatado: new Date(
-            fatura.data_vencimento
-          ).toLocaleDateString("pt-BR"),
+          vencimentoFormatado: dataVencimento.toLocaleDateString("pt-BR"),
+
+          // 🔥 CORREÇÃO 1: Mapear o valor numérico real (estava zero)
+          valor: parseFloat(fatura.valor || "0"),
+
+          // 🔥 CORREÇÃO 2: Mapear o valor pago (novo campo)
+          valorRecebido: parseFloat((fatura as any).valor_recebido || "0"),
+
           valorFormatado: parseFloat(fatura.valor).toLocaleString("pt-BR", {
             style: "currency",
             currency: "BRL",
@@ -84,11 +94,15 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
             fatura.status === "A"
               ? "Aberto"
               : fatura.status === "V"
-              ? "Vencido"
-              : fatura.status,
-          diasVencimento: 0, // Cálculo simplificado ou vindo do backend
+                ? "Vencido"
+                : fatura.status === "P" || fatura.status === "R" // Mapeia Pagos
+                  ? "Pago"
+                  : fatura.status,
+
+          // 🔥 CORREÇÃO 3: Passar os dias calculados (estava zero)
+          diasVencimento: diasDiff,
+
           clienteNome: "",
-          valor: 0,
         };
 
         setBoletos([faturaAdaptada]);
@@ -162,7 +176,7 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
 
     if (numerosSomenente.length !== 11 && numerosSomenente.length !== 14) {
       setError(
-        "Por favor, digite um CPF (11 dígitos) ou CNPJ (14 dígitos) válido."
+        "Por favor, digite um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.",
       );
       return;
     }
@@ -192,7 +206,7 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
         // 🔥 CORREÇÃO 1: Filtrar apenas boletos Abertos (A) ou Parciais (P)
         // Removemos "R" (Recebido/Pago) e "C" (Cancelado) da visualização pública
         const boletosFiltrados = data.boletos.filter(
-          (b: any) => b.status === "A" || b.status === "P"
+          (b: any) => b.status === "A" || b.status === "P",
         );
 
         if (boletosFiltrados.length === 0) {
@@ -208,17 +222,17 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
           totalBoletos: boletosFiltrados.length,
           totalEmAberto: boletosFiltrados.reduce(
             (acc: number, b: any) => acc + Number(b.valor),
-            0
+            0,
           ),
           totalEmAbertoFormatado: boletosFiltrados
             .reduce((acc: number, b: any) => acc + Number(b.valor), 0)
             .toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
           // Conta como vencido apenas se diasVencimento for negativo E o status for Aberto/Parcial
           boletosVencidos: boletosFiltrados.filter(
-            (b: any) => b.diasVencimento < 0
+            (b: any) => b.diasVencimento < 0,
           ).length,
           boletosAVencer: boletosFiltrados.filter(
-            (b: any) => b.diasVencimento >= 0
+            (b: any) => b.diasVencimento >= 0,
           ).length,
         };
 
@@ -291,7 +305,7 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
     if (boleto.pixCopiaECola) {
       abrirModalPixInterface(
         boleto.pixCopiaECola,
-        boleto.pixImagem || undefined
+        boleto.pixImagem || undefined,
       );
       return;
     }
@@ -317,7 +331,7 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
         abrirModalPixInterface(code, img);
       } else {
         alert(
-          "O sistema financeiro ainda não gerou o QR Code para esta fatura."
+          "O sistema financeiro ainda não gerou o QR Code para esta fatura.",
         );
       }
     } catch (e) {
@@ -475,7 +489,7 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
                         <div className="flex items-center gap-3 mb-3">
                           <span
                             className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(
-                              boleto.status
+                              boleto.status,
                             )}`}
                           >
                             {boleto.status}
@@ -509,27 +523,51 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
                             )}
                         </div>
 
-                        <div className="text-right">
-                          <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">
+                        <div>
+                          <span className="text-xs text-gray-500 uppercase tracking-wider block mb-1">
                             Valor Original
-                          </p>
-                          <p className="text-lg font-bold text-white">
+                          </span>
+                          <span className="text-lg font-bold text-white">
                             {boleto.valorFormatado}
-                          </p>
+                          </span>
 
-                          {/* 🔥 ÁREA DE JUROS (Só aparece se vencido) */}
+                          {/* 🔥 BLOCO DE JUROS (AUTOMÁTICO) */}
                           {(() => {
-                            const calculo = calcularValorAtualizado(boleto);
-                            if (calculo) {
+                            // Se o boleto estiver vencido e tiver valor numérico válido
+                            if (
+                              boleto.diasVencimento < 0 &&
+                              boleto.status !== "P" &&
+                              boleto.valor
+                            ) {
+                              const diasAtraso = Math.abs(
+                                boleto.diasVencimento,
+                              );
+                              const multa = boleto.valor * 0.02; // 2%
+                              const juros =
+                                boleto.valor * (0.00033 * diasAtraso); // 0.033% ao dia
+                              const total = boleto.valor + multa + juros;
+
                               return (
-                                <div className="mt-1 animate-fadeIn">
-                                  <p className="text-[10px] text-gray-400">
-                                    + Encargos est.: R${" "}
-                                    {(calculo.multa + calculo.juros).toFixed(2)}
-                                  </p>
-                                  <p className="text-sm font-black text-fiber-orange">
-                                    Total Aprox: {calculo.textoTotal}
-                                  </p>
+                                <div className="mt-2 p-2 bg-red-500/10 border border-red-500/20 rounded animate-fadeIn">
+                                  <div className="flex justify-between text-[10px] text-gray-300">
+                                    <span>+ Multa (2%):</span>
+                                    <span>R$ {multa.toFixed(2)}</span>
+                                  </div>
+                                  <div className="flex justify-between text-[10px] text-gray-300">
+                                    <span>+ Juros ({diasAtraso} dias):</span>
+                                    <span>R$ {juros.toFixed(2)}</span>
+                                  </div>
+                                  <div className="border-t border-white/10 mt-1 pt-1 flex justify-between items-center">
+                                    <span className="text-xs font-bold text-fiber-orange">
+                                      Atualizado:
+                                    </span>
+                                    <span className="text-sm font-black text-fiber-orange">
+                                      {total.toLocaleString("pt-BR", {
+                                        style: "currency",
+                                        currency: "BRL",
+                                      })}
+                                    </span>
+                                  </div>
                                 </div>
                               );
                             }
@@ -561,7 +599,7 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
                             onClick={() =>
                               copiarCodigo(
                                 boleto.linhaDigitavel!,
-                                `bar-${boleto.id}`
+                                `bar-${boleto.id}`,
                               )
                             }
                             className="flex items-center justify-center gap-2 px-4 py-3 bg-white/5 hover:bg-white/10 text-white rounded-lg font-bold text-sm border border-white/10 transition-all"
