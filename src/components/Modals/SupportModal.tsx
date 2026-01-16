@@ -6,15 +6,9 @@ import {
   X,
 } from "lucide-react";
 import React, { useEffect } from "react";
-<<<<<<< HEAD
-import { CONTACT_INFO } from "../../constants";
-import Button from "./Button";
-import FiberNetTextLogo from "./FiberNetTextLogo";
-=======
 import Button from "../Button";
 import FiberNetTextLogo from "../FiberNetTextLogo";
 import { CONTACT_INFO } from "./../../types/constants";
->>>>>>> main
 
 interface SupportModalProps {
   isOpen: boolean;
@@ -101,7 +95,7 @@ const SupportModal: React.FC<SupportModalProps> = ({
             onClick={() =>
               window.open(
                 `https://wa.me/55${CONTACT_INFO.whatsapp.replace(/\D/g, "")}`,
-                "_blank"
+                "_blank",
               )
             }
             className="w-full flex items-center justify-between p-4 bg-neutral-800 hover:bg-fiber-green/10 border border-white/5 hover:border-fiber-green/50 rounded-xl group transition-all focus:outline-none focus:ring-2 focus:ring-fiber-green"
