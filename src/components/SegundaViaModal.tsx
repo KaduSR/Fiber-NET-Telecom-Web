@@ -23,6 +23,7 @@ interface SegundaViaModalProps {
   onClose: () => void;
   fatura?: DashboardFatura | null; // Opcional, para modo cliente
   initialViewMode?: "boletos" | "pix"; // Define a aba inicial
+  onNavigate?: (page: string) => void; // Navegação opcional
 }
 
 interface BoletoView {
@@ -49,7 +50,7 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
 }) => {
   const [cpfCnpj, setCpfCnpj] = useState("");
   const [loading, setLoading] = useState(false);
-  const [downloadingId, setDownloadingId] = useState<number | null>(null);
+  const [, setDownloadingId] = useState<number | null>(null);
   const [loadingPixId, setLoadingPixId] = useState<number | null>(null);
   const [boletos, setBoletos] = useState<BoletoView[]>([]);
   const [error, setError] = useState("");
@@ -122,27 +123,6 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
       setPixModalOpen(false);
     }
   }, [isOpen, fatura, initialViewMode]);
-
-  const calcularValorAtualizado = (boleto: BoletoView) => {
-    // Só calcula se estiver vencido (diasVencimento negativo) e em aberto
-    if (boleto.diasVencimento >= 0 || boleto.status !== "A") return null;
-
-    const diasAtraso = Math.abs(boleto.diasVencimento);
-    const multa = boleto.valor * 0.02; // 2% de multa
-    const juros = boleto.valor * (0.00033 * diasAtraso); // 0.033% ao dia (~1% mês)
-
-    const total = boleto.valor + multa + juros;
-
-    return {
-      multa,
-      juros,
-      total,
-      textoTotal: total.toLocaleString("pt-BR", {
-        style: "currency",
-        currency: "BRL",
-      }),
-    };
-  };
 
   // Formatar CPF/CNPJ
   const formatarCpfCnpj = (valor: string) => {
@@ -253,12 +233,6 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
     navigator.clipboard.writeText(texto);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
-  };
-
-  const copiarPix = () => {
-    navigator.clipboard.writeText(activePixCode);
-    setIsPixCopied(true);
-    setTimeout(() => setIsPixCopied(false), 2000);
   };
 
   const handleDownloadPDF = async (boleto: BoletoView) => {

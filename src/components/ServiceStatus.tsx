@@ -24,6 +24,7 @@ interface SegundaViaModalProps {
   onClose: () => void;
   fatura?: DashboardFatura | null; // Prop opcional da Área do Cliente
   initialViewMode?: "boleto" | "pix"; // Modo inicial
+  onNavigate?: (page: string) => void; // Navegação opcional
 }
 
 // Interface unificada para o modal
@@ -73,7 +74,7 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
           id: fatura.id,
           documento: fatura.documento || `Fat-${fatura.id}`,
           vencimentoFormatado: new Date(
-            fatura.data_vencimento
+            fatura.data_vencimento,
           ).toLocaleDateString("pt-BR"),
           valorFormatado: parseFloat(fatura.valor).toLocaleString("pt-BR", {
             style: "currency",
@@ -86,8 +87,8 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
             fatura.status === "A"
               ? "Aberto"
               : fatura.status === "V"
-              ? "Vencido"
-              : fatura.status,
+                ? "Vencido"
+                : fatura.status,
           diasVencimento: 0, // Cálculo simplificado ou vindo do backend
           clienteNome: "", // Não necessário na área logada
         };
@@ -161,8 +162,8 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
       if (data.boletos && data.boletos.length > 0) {
         setBoletos(
           data.boletos.sort(
-            (a: any, b: any) => a.diasVencimento - b.diasVencimento
-          )
+            (a: any, b: any) => a.diasVencimento - b.diasVencimento,
+          ),
         );
         setResumo(data.resumo);
       } else {
@@ -225,7 +226,7 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
     if (boleto.pixCopiaECola) {
       abrirModalPixInterface(
         boleto.pixCopiaECola,
-        boleto.pixImagem || undefined
+        boleto.pixImagem || undefined,
       );
       return;
     }
@@ -251,7 +252,7 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
         abrirModalPixInterface(code, img);
       } else {
         alert(
-          "O sistema financeiro ainda não gerou o QR Code para esta fatura."
+          "O sistema financeiro ainda não gerou o QR Code para esta fatura.",
         );
       }
     } catch (e) {
@@ -444,7 +445,7 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
                             onClick={() =>
                               copiarCodigoBarras(
                                 boleto.linhaDigitavel!,
-                                `bar-${boleto.id}`
+                                `bar-${boleto.id}`,
                               )
                             }
                             className="flex items-center justify-center gap-2 px-4 py-3 bg-white/5 text-white rounded-lg font-bold text-sm hover:bg-white/10 transition-all"

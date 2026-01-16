@@ -1,31 +1,31 @@
-import React, { useState, Suspense, useEffect } from "react";
-import Navbar from "./src/components/Navbar";
-import Hero from "./src/components/Hero";
-import Features from "./src/components/Features";
-import Footer from "./src/components/Footer";
-import SupportModal from "./src/components/SupportModal";
+import { SpeedInsights } from "@vercel/speed-insights/react";
+import { Headphones, Loader2 } from "lucide-react";
+import React, { Suspense, useEffect, useState } from "react";
+import { updateStatusInBackground } from "./services/statusMonitor";
 import ClientArea from "./src/components/ClientArea";
-import NewsSection from "./src/components/NewsSection";
-import { PLANS, HISTORY_TEXT } from "./constants";
-import { Loader2, Headphones } from "lucide-react";
+import Features from "./src/components/Features";
 import FiberNetTextLogo from "./src/components/FiberNetTextLogo";
+import Hero from "./src/components/Hero";
+import Footer from "./src/components/Layout/Footer";
+import SupportModal from "./src/components/Modals/SupportModal";
+import Navbar from "./src/components/Navbar";
+import NewsSection from "./src/components/NewsSection";
 import PlanCard from "./src/components/PlanCard";
 import SegundaViaModal from "./src/components/SegundaViaModal";
-import { updateStatusInBackground } from "./services/statusMonitor";
-import { SpeedInsights } from "@vercel/speed-insights/react";
+import { HISTORY_TEXT, PLANS } from "./src/types/constants";
 
 // Lazy load heavier components
 const Ethics = React.lazy(() => import("./src/components/Ethics"));
 const HelpCenter = React.lazy(() => import("./src/components/HelpCenter"));
 const ClientGuide = React.lazy(() => import("./src/components/ClientGuide"));
 const CodeOfEthicsDocument = React.lazy(
-  () => import("./src/components/CodeOfEthicsDocument")
+  () => import("./src/components/CodeOfEthicsDocument"),
 );
 const ServiceStatus = React.lazy(
-  () => import("./src/components/ServiceStatus")
+  () => import("./src/components/ServiceStatus"),
 );
 const LegalCompliance = React.lazy(
-  () => import("./src/components/LegalCompliance")
+  () => import("./src/components/LegalCompliance"),
 );
 
 const App: React.FC = () => {
@@ -56,7 +56,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       updateStatusInBackground().catch((err) =>
-        console.error("Falha no monitoramento bg:", err)
+        console.error("Falha no monitoramento bg:", err),
       );
     }, 3000);
 
