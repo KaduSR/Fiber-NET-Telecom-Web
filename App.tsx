@@ -1,5 +1,6 @@
 import { Headphones, Loader2 } from "lucide-react";
 import React, { Suspense, useEffect, useState } from "react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import ClientArea from "./src/components/Dashboard/ClientArea";
 import PlanCard from "./src/components/Dashboard/PlanCard";
 import Features from "./src/components/Features";
@@ -315,6 +316,9 @@ const App: React.FC = () => {
           <span className="absolute -right-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-fiber-card border-t border-r border-white/10 transform rotate-45"></span>
         </span>
       </button>
+
+      {/* Vercel Speed Insights */}
+      <SpeedInsights />
     </div>
   );
 };
