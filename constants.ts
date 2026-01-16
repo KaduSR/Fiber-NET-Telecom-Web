@@ -1,5 +1,5 @@
 // spell:disable
-import { NavItem, Plan } from "../../types";
+import { NavItem, Plan } from "./types";
 
 export const NAV_ITEMS: NavItem[] = [
   { label: "Início", href: "home" },

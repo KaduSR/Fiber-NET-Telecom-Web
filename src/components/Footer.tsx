@@ -1,7 +1,13 @@
-import { ChevronRight, Instagram, PhoneCall, Star } from "lucide-react";
+import {
+  ChevronRight,
+  Instagram,
+  MapPin,
+  MessageCircle,
+  Star,
+} from "lucide-react";
 import React from "react";
-import { CONTACT_INFO } from "../../types/constants";
-import FiberNetLogo from "../FiberNetLogo";
+import { CONTACT_INFO } from "../../constants";
+import FiberNetLogo from "./FiberNetLogo";
 
 interface FooterProps {
   onNavigate?: (page: string) => void;
@@ -70,7 +76,7 @@ const Footer: React.FC<FooterProps> = ({
     <footer className="bg-fiber-card text-white pt-12 pb-8 border-t border-white/5">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Compact Grid Layout */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-12 mb-1">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
           {/* Coluna 1: Marca e Social */}
           <div className="space-y-4">
             <div
@@ -119,7 +125,7 @@ const Footer: React.FC<FooterProps> = ({
               <h4 className="text-sm font-bold mb-4 text-white uppercase tracking-wider">
                 Menu
               </h4>
-              <ul className="space-y-1">
+              <ul className="space-y-2">
                 <FooterLink
                   href="home"
                   label="Início"
@@ -133,13 +139,7 @@ const Footer: React.FC<FooterProps> = ({
                 <FooterLink
                   href="#"
                   label="2ª Via Boleto"
-                  // onClick={handleSegundaVia}
-                  onClick={() =>
-                    window.open(
-                      "https://centralfiber.online/central_assinante_web/login",
-                      "_blank"
-                    )
-                  }
+                  onClick={handleSegundaVia}
                 />
                 <FooterLink
                   href="help"
@@ -149,7 +149,7 @@ const Footer: React.FC<FooterProps> = ({
               </ul>
             </div>
             <div>
-              <h4 className="text-sm font-bold mb-2 text-white uppercase tracking-wider">
+              <h4 className="text-sm font-bold mb-4 text-white uppercase tracking-wider">
                 Legal
               </h4>
               <ul className="space-y-2">
@@ -174,7 +174,7 @@ const Footer: React.FC<FooterProps> = ({
 
           {/* Coluna 3: Contato Compacto */}
           <div className="md:text-right">
-            <h4 className="text-sm font-bold mb-2 text-white uppercase tracking-wider">
+            <h4 className="text-sm font-bold mb-4 text-white uppercase tracking-wider">
               Fale Conosco
             </h4>
             <div className="flex flex-col md:items-end space-y-3">
@@ -182,17 +182,34 @@ const Footer: React.FC<FooterProps> = ({
                 className="group flex items-center gap-2 text-gray-400 hover:text-fiber-green transition-colors"
                 onClick={onOpenSupport}
               >
-                <PhoneCall size={18} />
+                <MessageCircle size={18} />
                 <span className="font-medium text-sm">
-                  {CONTACT_INFO.phone}
+                  {CONTACT_INFO.whatsapp}
                 </span>
               </button>
+
+              <a
+                href="https://maps.app.goo.gl/VrTauxVymmyycMEL7"
+                target="_blank"
+                rel="noreferrer"
+                className="group flex items-start md:justify-end gap-2 text-gray-400 hover:text-fiber-orange transition-colors text-sm max-w-xs ml-auto"
+              >
+                <MapPin size={18} className="shrink-0 mt-0.5" />
+                <span>{CONTACT_INFO.address}</span>
+              </a>
+
+              <div className="pt-2">
+                <span className="inline-flex items-center gap-2 px-3 py-1 bg-red-500/10 border border-red-500/20 rounded-full text-[10px] font-bold text-red-400 uppercase tracking-wide">
+                  <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
+                  Não aceitamos ligações
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-white/10 pt-2 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-500">
+        <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-500">
           <div className="text-center md:text-left">
             <p>
               &copy; {new Date().getFullYear()} Fiber.Net - CNPJ:

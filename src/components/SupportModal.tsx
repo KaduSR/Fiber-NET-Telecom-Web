@@ -1,16 +1,14 @@
-// cspell: disable
 import {
   ExternalLink,
-  FileAxis3d,
+  FileText,
   Headphones,
   MessageCircle,
-  PhoneForwarded,
   X,
 } from "lucide-react";
 import React, { useEffect } from "react";
-import { CONTACT_INFO } from "../../types/constants";
-import Button from "../Button";
-import FiberNetTextLogo from "../FiberNetTextLogo";
+import { CONTACT_INFO } from "../../constants";
+import Button from "./Button";
+import FiberNetTextLogo from "./FiberNetTextLogo";
 
 interface SupportModalProps {
   isOpen: boolean;
@@ -48,11 +46,6 @@ const SupportModal: React.FC<SupportModalProps> = ({
       onOpenSegundaVia();
     }
     onClose();
-  };
-
-  const handlePhoneclick = () => {
-    const phoneClean = CONTACT_INFO.phone.replace(/\D/g, "");
-    window.open(`tel:${phoneClean}`, "_blank");
   };
 
   return (
@@ -134,34 +127,12 @@ const SupportModal: React.FC<SupportModalProps> = ({
           >
             <div className="flex items-center gap-4">
               <div className="bg-fiber-orange/20 p-3 rounded-full text-fiber-orange group-hover:scale-110 transition-transform">
-                <FileAxis3d size={24} aria-hidden="true" />
+                <FileText size={24} aria-hidden="true" />
               </div>
               <div className="text-left">
-                <div className="text-white font-bold">2ª via de boleto</div>
+                <div className="text-white font-bold">2ª Via de Boleto</div>
                 <div className="text-xs text-gray-400">
-                  segunda via de boleto
-                </div>
-              </div>
-            </div>
-            <ExternalLink
-              size={16}
-              className="text-gray-500 group-hover:text-fiber-orange"
-              aria-hidden="true"
-            />
-          </button>
-          <button
-            onClick={handlePhoneclick}
-            className="w-full flex items-center justify-between p-4 bg-neutral-800 hover:bg-fiber-orange/10 border border-white/5 hover:border-fiber-orange/50 rounded-xl group transition-all focus:outline-none focus:ring-2 focus:ring-fiber-orange"
-            aria-label="Acessar 2ª Via de Boleto"
-          >
-            <div className="flex items-center gap-4">
-              <div className="bg-fiber-orange/20 p-3 rounded-full text-fiber-orange group-hover:scale-110 transition-transform">
-                <PhoneForwarded size={24} aria-hidden="true" />
-              </div>
-              <div className="text-left">
-                <div className="text-white font-bold">Ligue Agora</div>
-                <div className="text-xs text-gray-400">
-                  Nossa central telefonica de atendimento
+                  Acesso rápido por CPF/CNPJ
                 </div>
               </div>
             </div>
@@ -179,19 +150,13 @@ const SupportModal: React.FC<SupportModalProps> = ({
             variant="primary"
             fullWidth
             aria-label="Acessar Área do Cliente"
-            // onClick={handleClientAreaClick}
-            onClick={() =>
-              window.open(
-                "https://centralfiber.online/central_assinante_web/login",
-                "_blank"
-              )
-            }
+            onClick={handleClientAreaClick}
           >
             Acessar Área do Cliente
           </Button>
           <div className="mt-4 text-center">
             <p className="text-[10px] text-red-500 uppercase tracking-wider font-bold">
-              Só aceitamos ligações via Telefone Fixo!!
+              NÃO ACEITAMOS LIGAÇÕES!!
             </p>
             <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-2">
               Horário de Atendimento

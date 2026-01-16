@@ -1,10 +1,8 @@
-// src/components/Layout/Navbar.tsx
-// cspell:disable
 import { Headphones, Menu, X } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import { NAV_ITEMS } from "../../types/constants";
-import Button from "../Button";
-import FiberNetLogo from "../FiberNetLogo";
+import { NAV_ITEMS } from "../../constants";
+import Button from "./Button";
+import FiberNetLogo from "./FiberNetLogo";
 
 interface NavbarProps {
   onNavigate: (page: string) => void;
@@ -42,6 +40,7 @@ const Navbar: React.FC<NavbarProps> = ({
       return;
     }
 
+    // Handle external links
     if (href.startsWith("http")) {
       window.open(href, "_blank");
       setIsOpen(false);
@@ -76,6 +75,7 @@ const Navbar: React.FC<NavbarProps> = ({
     return currentPage === href;
   };
 
+  // Dynamic classes for the navbar background transition
   const navbarClasses =
     isScrolled || isOpen || currentPage !== "home"
       ? "bg-neutral-950/80 backdrop-blur-lg border-b border-white/5 py-3 shadow-md"
@@ -89,6 +89,7 @@ const Navbar: React.FC<NavbarProps> = ({
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center">
+          {/* Logo - Adjusted size for elegance */}
           <button
             className="flex items-center cursor-pointer select-none focus:outline-none opacity-100 hover:opacity-90 transition-opacity"
             onClick={() => onNavigate("home")}
@@ -97,8 +98,9 @@ const Navbar: React.FC<NavbarProps> = ({
             <FiberNetLogo className="h-10 sm:h-12" />
           </button>
 
-          {/* Desktop Menu */}
+          {/* Desktop Menu - Cleaner Look */}
           <div className="hidden lg:flex items-center gap-6">
+            {/* Navigation Links */}
             <div className="flex items-center space-x-5">
               {NAV_ITEMS.map((item) => (
                 <a
@@ -113,6 +115,7 @@ const Navbar: React.FC<NavbarProps> = ({
                   }`}
                 >
                   {item.label}
+                  {/* Active/Hover Indicator */}
                   <span
                     className={`absolute bottom-0 left-0 w-full h-0.5 bg-fiber-orange transform origin-left transition-transform duration-300 shadow-[0_0_8px_rgba(255,107,0,0.8)] ${
                       isLinkActive(item.href)
@@ -124,6 +127,7 @@ const Navbar: React.FC<NavbarProps> = ({
               ))}
             </div>
 
+            {/* Actions */}
             <div className="flex items-center gap-4 pl-6 border-l border-white/10">
               <button
                 onClick={onOpenSupport}
@@ -134,22 +138,13 @@ const Navbar: React.FC<NavbarProps> = ({
                 <Headphones size={20} />
               </button>
 
-              {/* LÓGICA CORRIGIDA: Só mostra o botão se NÃO estiver na área do cliente */}
-              {currentPage !== "client-area" && (
-                <Button
-                  variant="primary"
-                  className="!py-2 !px-5 text-xs font-bold uppercase tracking-wider rounded-full"
-                  onClick={() => onNavigate("client-area")}
-                  // onClick={() =>
-                  //   window.open(
-                  //     "https://centralfiber.online/central_assinante_web/login",
-                  //     "_blank"
-                  //   )
-                  // }
-                >
-                  Área do Cliente
-                </Button>
-              )}
+              <Button
+                variant="primary"
+                className="!py-2 !px-5 text-xs font-bold uppercase tracking-wider rounded-full"
+                onClick={() => onNavigate("client-area")}
+              >
+                Área do Cliente
+              </Button>
             </div>
           </div>
 
@@ -210,21 +205,17 @@ const Navbar: React.FC<NavbarProps> = ({
             >
               <Headphones size={18} /> Suporte
             </button>
-
-            {/* MOBILE: Também esconde se já estiver lá */}
-            {currentPage !== "client-area" && (
-              <Button
-                variant="primary"
-                fullWidth
-                className="!rounded-lg !text-sm"
-                onClick={() => {
-                  setIsOpen(false);
-                  onNavigate("client-area");
-                }}
-              >
-                Área do Cliente
-              </Button>
-            )}
+            <Button
+              variant="primary"
+              fullWidth
+              className="!rounded-lg !text-sm"
+              onClick={() => {
+                setIsOpen(false);
+                onNavigate("client-area");
+              }}
+            >
+              Área do Cliente
+            </Button>
           </div>
         </div>
       </div>

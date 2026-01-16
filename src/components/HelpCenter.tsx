@@ -9,7 +9,7 @@ import {
   Wrench,
 } from "lucide-react";
 import React, { useState } from "react";
-import { CONTACT_INFO } from "../types/constants";
+import { CONTACT_INFO } from "../../constants";
 import Button from "./Button";
 
 interface HelpCenterProps {

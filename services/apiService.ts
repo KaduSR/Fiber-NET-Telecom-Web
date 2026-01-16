@@ -1,7 +1,7 @@
 // src/services/apiService.ts
 // cspell: disable
-import { DashboardResponse, LoginResponse } from "../types/api";
 import { API_BASE_URL, ENDPOINTS } from "../config";
+import { DashboardResponse, LoginResponse } from "../types/api";
 
 class ApiService {
   private getHeaders(): HeadersInit {
@@ -28,7 +28,7 @@ class ApiService {
     const url = `${cleanBase}${cleanEndpoint}`;
 
     try {
-      console.log(`[Frontend] Requesting: ${url}`);
+      // console.log(`[Frontend] Requesting: ${url}`);
       const response = await fetch(url, {
         ...options,
         headers: {
@@ -49,7 +49,6 @@ class ApiService {
 
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
-          // Se der erro de auth, fazemos logout automático
           this.logout();
         }
         const errorMessage =
@@ -64,7 +63,7 @@ class ApiService {
     }
   }
 
-  // === MÉTODOS ===
+  // === MÉTODOS DE AUTH ===
 
   async login(credentials: {
     email: string;
@@ -77,17 +76,17 @@ class ApiService {
 
     if (data.token) {
       localStorage.setItem("authToken", data.token);
-      // 🔥 AQUI ESTÁ A CORREÇÃO: Avisa o sistema que o login aconteceu
       window.dispatchEvent(new Event("auth-change"));
     }
     return data;
   }
 
-  // 🔥 NOVO MÉTODO: Centraliza o logout e avisa o Navbar
   logout() {
     localStorage.removeItem("authToken");
     window.dispatchEvent(new Event("auth-change"));
   }
+
+  // === MÉTODOS DO DASHBOARD ===
 
   async getDashboard(): Promise<DashboardResponse> {
     const rawData = await this.request<any>(ENDPOINTS.DASHBOARD, {
@@ -126,18 +125,31 @@ class ApiService {
       };
     });
 
-    // 4. Normalizar Faturas
+    // 4. Normalizar Faturas (CORRIGIDO PARA O HISTÓRICO)
     const faturas = (rawData.faturas || []).map((f: any) => {
-      const st = f.status ? String(f.status).toLowerCase() : "";
-      const isPaid = ["pago", "baixado", "c", "p", "liquidado"].includes(st);
-      const statusNormalizado = isPaid ? "C" : "A";
+      const statusLower = f.status ? String(f.status).toLowerCase() : "";
+
+      // Lógica de Status: "A" (Aberto), "P" (Pago/Parcial), "C" (Cancelado)
+      let statusNormalizado = "A";
+
+      // Se tiver 'recebido', 'pago' ou 'liquidado', marcamos como "P" (Pago)
+      // para aparecer no Histórico corretamente.
+      if (["r", "p", "pago", "recebido", "liquidado"].includes(statusLower)) {
+        statusNormalizado = "P";
+      }
+
+      if (statusLower === "c" || statusLower === "cancelado") {
+        statusNormalizado = "C";
+      }
 
       return {
         ...f,
         data_vencimento: f.vencimento || f.data_vencimento,
         status: statusNormalizado,
-        pix_code: null,
-        pix_qrcode: null,
+        // Garante que o valor recebido seja repassado para o frontend calcular
+        valor_recebido: f.valor_recebido || f.valor_pago || 0,
+        pix_code: f.pix_code || null,
+        pix_qrcode: f.pix_qrcode || null,
       };
     });
 
@@ -162,6 +174,8 @@ class ApiService {
     };
   }
 
+  // === MÉTODOS DE BOLETOS E PIX ===
+
   async getPixCode(
     faturaId: string | number
   ): Promise<{ qrcode: string; imagem: string }> {
@@ -171,29 +185,66 @@ class ApiService {
         typeof ENDPOINTS.GET_PIX === "function"
           ? ENDPOINTS.GET_PIX(faturaId)
           : `/faturas/${faturaId}/pix`;
-
-      const response = await this.request<any>(url, {
-        method: "GET",
-      });
+      const response = await this.request<any>(url, { method: "GET" });
 
       if (response.pix && response.pix.qrCode) {
         return {
-          qrcode: response.pix.qrCode.qrcode,
-          imagem: response.pix.qrCode.imagemQrcode,
+          qrcode: response.pixCopiaECola,
+          imagem: response.pixImage || "",
+        };
+      }
+
+      if (response.pix_code && response.pix_qrcode) {
+        return {
+          qrcode: response.pix_code,
+          imagem: response.pix_qrcode || "",
         };
       }
 
       return {
-        qrcode: response.qrcode || "",
-        imagem: response.imagem || "",
+        qrcode: "",
+        imagem: "",
       };
     } catch (error) {
-      console.error(
-        `[ApiService] Erro ao buscar PIX da fatura ${faturaId}:`,
-        error
-      );
+      console.error(`[ApiService] Erro PIX ${faturaId}:`, error);
       throw error;
     }
+  }
+
+  // 🔥 CORREÇÃO PRINCIPAL: Adicionado 'getSegundaVia' que faltava
+  async getSegundaVia(
+    id: number | string
+  ): Promise<{ base64_document: string }> {
+    // Aponta para a rota correta do seu backend
+    const url = `/boletos/${id}/segunda-via`;
+    return this.request<{ base64_document: string }>(url, {
+      method: "GET",
+    });
+  }
+
+  // Mantemos 'imprimirBoleto' como apelido para compatibilidade com códigos antigos
+  async imprimirBoleto(id: number | string) {
+    return this.getSegundaVia(id);
+  }
+
+  async imprimirNotaFiscal(
+    id: number | string
+  ): Promise<{ base64_document: string }> {
+    const url = `/notas/${id}/imprimir`;
+    return this.request<{ base64_document: string }>(url, {
+      method: "GET",
+    });
+  }
+
+  // === MÉTODOS DE AÇÃO ===
+
+  async performLoginAction(loginId: number, action: string): Promise<any> {
+    // @ts-ignore
+    const url =
+      typeof ENDPOINTS.LOGIN_ACTION === "function"
+        ? ENDPOINTS.LOGIN_ACTION(loginId, action)
+        : `/logins/${loginId}/${action}`;
+    return this.request<any>(url, { method: "POST" });
   }
 
   async recoverPassword(email: string): Promise<{ message: string }> {
@@ -210,45 +261,13 @@ class ApiService {
     });
   }
 
-  async performLoginAction(loginId: number, action: string): Promise<any> {
-    // @ts-ignore
-    const url =
-      typeof ENDPOINTS.LOGIN_ACTION === "function"
-        ? ENDPOINTS.LOGIN_ACTION(loginId, action)
-        : `/logins/${loginId}/${action}`;
-
-    return this.request<any>(url, {
-      method: "POST",
-    });
-  }
-
-  async imprimirNotaFiscal(
-    id: number | string
-  ): Promise<{ base64_document: string }> {
-    const url = `/notas/${id}/imprimir`;
-
-    return this.request<{ base64_document: string }>(url, {
-      method: "GET",
-    });
-  }
-
-  async imprimirBoleto(
-    id: number | string
-  ): Promise<{ base64_document: string }> {
-    const url = `/boletos/${id}/segunda-via`;
-
-    return this.request<{ base64_document: string }>(url, {
-      method: "GET",
-    });
-  }
+  // === UTILITÁRIOS ===
 
   private formatUptime(seconds: string | number): string {
     const sec = Number(seconds);
     if (isNaN(sec)) return String(seconds);
-
     const days = Math.floor(sec / 86400);
     const hours = Math.floor((sec % 86400) / 3600);
-
     if (days > 0) return `${days}d ${hours}h`;
     return `${hours}h ${Math.floor((sec % 3600) / 60)}m`;
   }

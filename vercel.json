@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api-proxy/:path*",
-      "destination": "http://localhost:3333/:path*"
+      "destination": "https://api.centralfiber.online/:path*"
     },
     {
       "source": "/(.*)",

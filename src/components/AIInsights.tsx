@@ -1,12 +1,12 @@
-import React from "react";
 import {
-  Sparkles,
   AlertTriangle,
+  ArrowRight,
   CheckCircle,
   Info,
-  ArrowRight,
+  Sparkles,
 } from "lucide-react";
-import { AiAnalysis, AiInsight } from "../types/api";
+import React from "react";
+import { AiAnalysis, AiInsight } from "../../types/api";
 
 interface AIInsightsProps {
   data?: AiAnalysis;
@@ -51,7 +51,7 @@ const AIInsights: React.FC<AIInsightsProps> = ({ data }) => {
               Análise Inteligente Fiber.AI
             </h3>
             <p className="text-xs text-gray-400">
-              Insights baseados no seu perfil.
+              Insights baseados no seu perfil de uso e financeiro.
             </p>
           </div>
         </div>

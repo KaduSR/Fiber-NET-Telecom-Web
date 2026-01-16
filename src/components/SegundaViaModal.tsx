@@ -1,37 +1,36 @@
-// spell:disable
-import React, { useEffect, useState } from "react";
 import {
   AlertCircle,
-  Barcode,
   CheckCircle,
   Copy,
   CreditCard,
   Download,
   FileText,
   Loader2,
-  QrCode as QrCodeIcon, // Renomeado para não conflitar com a lib
+  QrCode,
+  QrCodeIcon,
   Search,
   X,
 } from "lucide-react";
-import QRCode from "react-qr-code"; // Biblioteca de geração
-import { API_BASE_URL } from "../../config"; // Certifique-se que o config exporta API_BASE_URL
+import React, { useEffect, useState } from "react";
+import QRCode from "react-qr-code";
+import { API_BASE_URL, ENDPOINTS } from "../../config";
 import { apiService } from "../../services/apiService";
-import Button from "../Button";
 import { Fatura as DashboardFatura } from "../../types/api";
+import Button from "./Button";
 
 interface SegundaViaModalProps {
   isOpen: boolean;
   onClose: () => void;
-  fatura?: DashboardFatura | null; // Prop opcional da Área do Cliente
-  initialViewMode?: "boleto" | "pix"; // Modo inicial
+  fatura?: DashboardFatura | null; // Opcional, para modo cliente
+  initialViewMode?: "boletos" | "pix"; // Define a aba inicial
 }
 
-// Interface unificada para o modal
 interface BoletoView {
   id: number;
   documento: string;
   vencimentoFormatado: string;
   valorFormatado: string;
+  valor: number;
   linhaDigitavel: string | null;
   pixCopiaECola: string | null;
   pixImagem?: string | null;
@@ -64,7 +63,6 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
   // Estados do Código de Barras
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // === EFEITO: Inicialização e Adaptação ===
   useEffect(() => {
     if (isOpen) {
       if (fatura) {
@@ -89,7 +87,8 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
               ? "Vencido"
               : fatura.status,
           diasVencimento: 0, // Cálculo simplificado ou vindo do backend
-          clienteNome: "", // Não necessário na área logada
+          clienteNome: "",
+          valor: 0,
         };
 
         setBoletos([faturaAdaptada]);
@@ -110,15 +109,39 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
     }
   }, [isOpen, fatura, initialViewMode]);
 
-  // === MÉTODOS AUXILIARES ===
+  const calcularValorAtualizado = (boleto: BoletoView) => {
+    // Só calcula se estiver vencido (diasVencimento negativo) e em aberto
+    if (boleto.diasVencimento >= 0 || boleto.status !== "A") return null;
+
+    const diasAtraso = Math.abs(boleto.diasVencimento);
+    const multa = boleto.valor * 0.02; // 2% de multa
+    const juros = boleto.valor * (0.00033 * diasAtraso); // 0.033% ao dia (~1% mês)
+
+    const total = boleto.valor + multa + juros;
+
+    return {
+      multa,
+      juros,
+      total,
+      textoTotal: total.toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+      }),
+    };
+  };
+
+  // Formatar CPF/CNPJ
   const formatarCpfCnpj = (valor: string) => {
     const numeros = valor.replace(/\D/g, "");
+
     if (numeros.length <= 11) {
+      // CPF: 000.000.000-00
       return numeros
         .replace(/(\d{3})(\d)/, "$1.$2")
         .replace(/(\d{3})(\d)/, "$1.$2")
         .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
     } else {
+      // CNPJ: 00.000.000/0000-00
       return numeros
         .replace(/(\d{2})(\d)/, "$1.$2")
         .replace(/(\d{3})(\d)/, "$1.$2")
@@ -128,16 +151,19 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCpfCnpj(formatarCpfCnpj(e.target.value));
+    const formatted = formatarCpfCnpj(e.target.value);
+    setCpfCnpj(formatted);
   };
 
-  // === AÇÕES DE BUSCA E PAGAMENTO ===
   const buscarBoletos = async (e: React.FormEvent) => {
     e.preventDefault();
+
     const numerosSomenente = cpfCnpj.replace(/\D/g, "");
 
     if (numerosSomenente.length !== 11 && numerosSomenente.length !== 14) {
-      setError("Por favor, digite um CPF ou CNPJ válido.");
+      setError(
+        "Por favor, digite um CPF (11 dígitos) ou CNPJ (14 dígitos) válido."
+      );
       return;
     }
 
@@ -147,32 +173,78 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
     setResumo(null);
 
     try {
-      // Usa a URL base do config
-      const response = await fetch(`${API_BASE_URL}/boletos/buscar-cpf`, {
+      const response = await fetch(`${API_BASE_URL}${ENDPOINTS.INVOICES}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ cpfCnpj: numerosSomenente }),
       });
 
-      if (!response.ok)
-        throw new Error("Nenhuma fatura encontrada ou erro na busca.");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Erro ao buscar boletos");
+      }
+
       const data = await response.json();
 
       if (data.boletos && data.boletos.length > 0) {
-        setBoletos(
-          data.boletos.sort(
-            (a: any, b: any) => a.diasVencimento - b.diasVencimento
-          )
+        // 🔥 CORREÇÃO 1: Filtrar apenas boletos Abertos (A) ou Parciais (P)
+        // Removemos "R" (Recebido/Pago) e "C" (Cancelado) da visualização pública
+        const boletosFiltrados = data.boletos.filter(
+          (b: any) => b.status === "A" || b.status === "P"
         );
-        setResumo(data.resumo);
+
+        if (boletosFiltrados.length === 0) {
+          setError("Nenhuma fatura pendente encontrada para este CPF/CNPJ.");
+          setBoletos([]);
+          setResumo(null);
+          return;
+        }
+
+        // 🔥 CORREÇÃO 2: Recalcular o resumo baseado apenas nos filtrados
+        // Isso impede que boletos pagos (R) contem como "Vencidos" ou somem no total
+        const novoResumo = {
+          totalBoletos: boletosFiltrados.length,
+          totalEmAberto: boletosFiltrados.reduce(
+            (acc: number, b: any) => acc + Number(b.valor),
+            0
+          ),
+          totalEmAbertoFormatado: boletosFiltrados
+            .reduce((acc: number, b: any) => acc + Number(b.valor), 0)
+            .toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+          // Conta como vencido apenas se diasVencimento for negativo E o status for Aberto/Parcial
+          boletosVencidos: boletosFiltrados.filter(
+            (b: any) => b.diasVencimento < 0
+          ).length,
+          boletosAVencer: boletosFiltrados.filter(
+            (b: any) => b.diasVencimento >= 0
+          ).length,
+        };
+
+        setBoletos(boletosFiltrados);
+        setResumo(novoResumo);
       } else {
-        setError("Nenhuma fatura em aberto encontrada.");
+        setError("Nenhuma fatura em aberto encontrada para este CPF/CNPJ.");
       }
     } catch (err: any) {
-      setError(err.message || "Erro ao buscar boletos.");
+      console.error("Erro ao buscar boletos:", err);
+      setError(err.message || "Erro ao buscar boletos. Tente novamente.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const copiarCodigo = (texto: string, id: string) => {
+    navigator.clipboard.writeText(texto);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const copiarPix = () => {
+    navigator.clipboard.writeText(activePixCode);
+    setIsPixCopied(true);
+    setTimeout(() => setIsPixCopied(false), 2000);
   };
 
   const handleDownloadPDF = async (boleto: BoletoView) => {
@@ -195,12 +267,6 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
     } finally {
       setDownloadingId(null);
     }
-  };
-
-  const copiarCodigoBarras = (texto: string, id: string) => {
-    navigator.clipboard.writeText(texto);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
   };
 
   const abrirModalPixInterface = (codigo: string, imagem?: string) => {
@@ -262,12 +328,25 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
     }
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "Vencido":
+        return "text-red-400 bg-red-400/10 border-red-400/20";
+      case "Vence Hoje":
+        return "text-orange-400 bg-orange-400/10 border-orange-400/20";
+      case "A Vencer":
+        return "text-yellow-400 bg-yellow-400/10 border-yellow-400/20";
+      default:
+        return "text-green-400 bg-green-400/10 border-green-400/20";
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
     <>
       <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-        <div className="relative w-full max-w-4xl bg-fiber-card border border-white/10 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
+        <div className="relative w-full max-w-4xl bg-fiber-card border border-white/10 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
           {/* Header */}
           <div className="sticky top-0 bg-neutral-900 p-6 border-b border-white/5 flex justify-between items-center z-10">
             <div className="flex items-center gap-3">
@@ -279,118 +358,125 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
                   2ª Via de Boleto
                 </h2>
                 <p className="text-sm text-gray-400">
-                  {fatura
-                    ? `Detalhes da Fatura #${fatura.id}`
-                    : "Consulte por CPF ou CNPJ"}
+                  Consulte suas faturas por CPF ou CNPJ
                 </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-white p-2 hover:bg-white/5 rounded-full"
+              className="text-red-500 hover:text-white transition-colors p-2 hover:bg-white/5 rounded-full"
             >
-              <X size={20} />
+              <X size={30} />
             </button>
           </div>
 
+          {/* Content */}
           <div className="p-6">
-            {/* Formulário de Busca (Só aparece se NÃO tiver fatura passada via props) */}
-            {!fatura && (
-              <form onSubmit={buscarBoletos} className="mb-8">
-                <div className="flex flex-col md:flex-row gap-4">
-                  <div className="flex-grow relative">
-                    <CreditCard
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"
-                      size={20}
-                    />
-                    <input
-                      type="text"
-                      value={cpfCnpj}
-                      onChange={handleInputChange}
-                      placeholder="Digite seu CPF ou CNPJ"
-                      className="w-full h-14 pl-12 pr-4 bg-neutral-900 border border-white/10 rounded-xl text-white text-lg focus:outline-none focus:border-fiber-orange"
-                      maxLength={18}
-                      required
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    className="h-14 md:w-48 text-lg gap-2"
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="animate-spin" /> Buscando...
-                      </>
-                    ) : (
-                      <>
-                        <Search /> Buscar
-                      </>
-                    )}
-                  </Button>
+            {/* Form */}
+            <form onSubmit={buscarBoletos} className="mb-8">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-grow relative">
+                  <CreditCard
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"
+                    size={20}
+                  />
+                  <input
+                    type="text"
+                    value={cpfCnpj}
+                    onChange={handleInputChange}
+                    placeholder="Digite seu CPF ou CNPJ"
+                    className="w-full h-14 pl-12 pr-4 bg-neutral-900 border border-white/10 rounded-xl text-white text-lg focus:outline-none focus:border-fiber-orange focus:ring-1 focus:ring-fiber-orange transition-all"
+                    maxLength={18}
+                    required
+                  />
                 </div>
-              </form>
-            )}
+                <Button
+                  type="submit"
+                  variant="primary"
+                  className="h-14 md:w-48 text-lg gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="animate-spin" size={20} /> Buscando...
+                    </>
+                  ) : (
+                    <>
+                      <Search size={20} /> Buscar
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
 
+            {/* Error */}
             {error && (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex gap-3 mb-6 text-red-400 text-sm">
-                <AlertCircle className="w-5 h-5" /> {error}
+              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-start gap-3 mb-6 animate-fadeIn">
+                <AlertCircle className="text-red-500 w-5 h-5 mt-0.5 flex-shrink-0" />
+                <p className="text-red-400 text-sm">{error}</p>
               </div>
             )}
 
-            {/* Resumo Financeiro (Só na busca pública) */}
-            {resumo && !fatura && (
-              <div className="bg-neutral-900 border border-white/10 rounded-xl p-6 mb-6">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                  <div className="bg-white/5 p-3 rounded">
-                    <div className="text-fiber-orange font-bold text-xl">
+            {/* Resumo */}
+            {resumo && (
+              <div className="bg-neutral-900 border border-white/10 rounded-xl p-6 mb-6 animate-fadeIn">
+                <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+                  <CheckCircle className="text-fiber-green" size={20} />
+                  Resumo Financeiro
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center p-3 bg-white/5 rounded-lg">
+                    <div className="text-2xl font-bold text-fiber-orange">
                       {resumo.totalBoletos}
                     </div>
-                    <div className="text-xs text-gray-400">Faturas</div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      Total de Faturas
+                    </div>
                   </div>
-                  <div className="bg-white/5 p-3 rounded">
-                    <div className="text-white font-bold text-xl">
+                  <div className="text-center p-3 bg-white/5 rounded-lg">
+                    <div className="text-2xl font-bold text-white">
                       {resumo.totalEmAbertoFormatado}
                     </div>
-                    <div className="text-xs text-gray-400">Total</div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      Valor Total
+                    </div>
                   </div>
-                  <div className="bg-white/5 p-3 rounded">
-                    <div className="text-red-400 font-bold text-xl">
+                  <div className="text-center p-3 bg-white/5 rounded-lg">
+                    <div className="text-2xl font-bold text-red-400">
                       {resumo.boletosVencidos}
                     </div>
-                    <div className="text-xs text-gray-400">Vencidas</div>
+                    <div className="text-xs text-gray-400 mt-1">Vencidas</div>
                   </div>
-                  <div className="bg-white/5 p-3 rounded">
-                    <div className="text-green-400 font-bold text-xl">
+                  <div className="text-center p-3 bg-white/5 rounded-lg">
+                    <div className="text-2xl font-bold text-green-400">
                       {resumo.boletosAVencer}
                     </div>
-                    <div className="text-xs text-gray-400">A Vencer</div>
+                    <div className="text-xs text-gray-400 mt-1">A Vencer</div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Lista de Boletos */}
+            {/* Boletos */}
             {boletos.length > 0 && (
-              <div className="space-y-4">
+              <div className="space-y-4 animate-fadeIn">
                 <h3 className="text-white font-bold text-lg mb-4">
-                  {fatura ? "Fatura Selecionada" : "Faturas Encontradas"}
+                  Faturas Encontradas
                 </h3>
+
                 {boletos.map((boleto) => (
                   <div
                     key={boleto.id}
                     className="bg-neutral-900 border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all"
                   >
                     <div className="flex flex-col lg:flex-row justify-between gap-6">
+                      {/* Info */}
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-3">
                           <span
-                            className={`px-3 py-1 rounded-full text-xs font-bold border ${
-                              boleto.status === "Vencido"
-                                ? "text-red-400 bg-red-400/10 border-red-400/20"
-                                : "text-green-400 bg-green-400/10 border-green-400/20"
-                            }`}
+                            className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(
+                              boleto.status
+                            )}`}
                           >
                             {boleto.status}
                           </span>
@@ -400,54 +486,85 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
                             </span>
                           )}
                         </div>
-                        <div className="flex gap-8">
-                          <div>
-                            <div className="text-xs text-gray-500 uppercase">
-                              Vencimento
-                            </div>
-                            <div className="text-lg font-bold text-white">
-                              {boleto.vencimentoFormatado}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-xs text-gray-500 uppercase">
-                              Valor
-                            </div>
-                            <div className="text-lg font-bold text-fiber-orange">
-                              {boleto.valorFormatado}
-                            </div>
-                          </div>
+
+                        <div>
+                          <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">
+                            Vencimento
+                          </p>
+                          <p
+                            className={`font-medium ${
+                              boleto.diasVencimento < 0
+                                ? "text-red-500"
+                                : "text-white"
+                            }`}
+                          >
+                            {boleto.vencimentoFormatado}
+                          </p>
+                          {/* Mostra dias de atraso se vencido */}
+                          {boleto.diasVencimento < 0 &&
+                            boleto.status === "A" && (
+                              <span className="text-[10px] bg-red-500/10 text-red-500 px-1.5 py-0.5 rounded border border-red-500/20">
+                                {Math.abs(boleto.diasVencimento)} dias atrasado
+                              </span>
+                            )}
+                        </div>
+
+                        <div className="text-right">
+                          <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">
+                            Valor Original
+                          </p>
+                          <p className="text-lg font-bold text-white">
+                            {boleto.valorFormatado}
+                          </p>
+
+                          {/* 🔥 ÁREA DE JUROS (Só aparece se vencido) */}
+                          {(() => {
+                            const calculo = calcularValorAtualizado(boleto);
+                            if (calculo) {
+                              return (
+                                <div className="mt-1 animate-fadeIn">
+                                  <p className="text-[10px] text-gray-400">
+                                    + Encargos est.: R${" "}
+                                    {(calculo.multa + calculo.juros).toFixed(2)}
+                                  </p>
+                                  <p className="text-sm font-black text-fiber-orange">
+                                    Total Aprox: {calculo.textoTotal}
+                                  </p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
                       </div>
 
-                      {/* --- BOTÕES DE AÇÃO --- */}
+                      {/* Ações */}
                       <div className="flex flex-col gap-3 min-w-[200px]">
-                        {/* Botão PIX */}
                         <button
                           type="button"
                           onClick={() => handlePagarComPix(boleto)}
                           disabled={loadingPixId === boleto.id}
-                          className="flex items-center justify-center gap-2 px-4 py-3 bg-fiber-green/10 text-fiber-green rounded-lg font-bold text-sm hover:bg-fiber-green/20 transition-all disabled:opacity-50"
+                          className="w-full"
                         >
-                          {loadingPixId === boleto.id ? (
-                            <Loader2 className="animate-spin" size={18} />
-                          ) : (
-                            <QrCodeIcon size={18} />
-                          )}
-                          Pagar com PIX
+                          <span className="flex items-center justify-center gap-2 px-4 py-3 bg-fiber-green/10 text-fiber-green rounded-lg font-bold text-sm hover:bg-fiber-green/20 transition-all disabled:opacity-50">
+                            {loadingPixId === boleto.id ? (
+                              <Loader2 size={18} className="animate-spin" />
+                            ) : (
+                              <QrCode size={18} />
+                            )}
+                            PIX Copia e Cola
+                          </span>
                         </button>
 
-                        {/* Botão Linha Digitável */}
                         {boleto.linhaDigitavel && (
                           <button
-                            type="button"
                             onClick={() =>
-                              copiarCodigoBarras(
+                              copiarCodigo(
                                 boleto.linhaDigitavel!,
                                 `bar-${boleto.id}`
                               )
                             }
-                            className="flex items-center justify-center gap-2 px-4 py-3 bg-white/5 text-white rounded-lg font-bold text-sm hover:bg-white/10 transition-all"
+                            className="flex items-center justify-center gap-2 px-4 py-3 bg-white/5 hover:bg-white/10 text-white rounded-lg font-bold text-sm border border-white/10 transition-all"
                           >
                             {copiedId === `bar-${boleto.id}` ? (
                               <>
@@ -459,29 +576,23 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
                               </>
                             ) : (
                               <>
-                                <Barcode size={18} /> Copiar Barras
+                                <Copy size={18} /> Copiar Código
                               </>
                             )}
                           </button>
                         )}
 
-                        {/* Botão PDF */}
                         <button
-                          type="button"
                           onClick={() => handleDownloadPDF(boleto)}
-                          disabled={downloadingId === boleto.id}
-                          className="flex items-center justify-center gap-2 px-4 py-3 bg-fiber-orange/10 text-fiber-orange rounded-lg font-bold text-sm hover:bg-fiber-orange/20 transition-all disabled:opacity-50"
+                          disabled={loadingPixId === boleto.id}
+                          className="flex items-center justify-center gap-2 px-4 py-3 bg-fiber-orange/10 hover:bg-fiber-orange/20 text-fiber-orange rounded-lg font-bold text-sm border border-fiber-orange/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {downloadingId === boleto.id ? (
-                            <>
-                              <Loader2 className="animate-spin" size={18} />{" "}
-                              Gerando...
-                            </>
+                          {loadingPixId === boleto.id ? (
+                            <Loader2 size={18} className="animate-spin" />
                           ) : (
-                            <>
-                              <Download size={18} /> Baixar PDF
-                            </>
+                            <Download size={18} />
                           )}
+                          Baixar PDF
                         </button>
                       </div>
                     </div>
@@ -489,11 +600,21 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
                 ))}
               </div>
             )}
+
+            {/* Empty State */}
+            {!loading && !error && boletos.length === 0 && (
+              <div className="text-center py-12">
+                <FileText className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                <p className="text-gray-400">
+                  Digite seu CPF ou CNPJ para buscar suas faturas
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* --- MODAL ESPECÍFICO DO PIX --- */}
+      {/* PIX Modal */}
       {pixModalOpen && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center px-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-fiber-card border border-white/10 rounded-2xl p-6 max-w-md w-full relative">
