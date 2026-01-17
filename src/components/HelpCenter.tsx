@@ -125,8 +125,9 @@ SE NADA RESOLVER: WhatsApp (24) 2458-1861`,
 
 1. AGENDAMENTO (Mesmo dia ou 24h):
    - Entre em contato via WhatsApp (24) 2458-1861
-   - Informe seu endereço completo
-   - Escolha o melhor horário
+   - Ou pelo telefone (24) 2458-1861
+   - Informe seu nome completo ou CPF/CNPJ
+   - Escolha o melhor Périodo para a visita técnica
 
 2. VISITA TÉCNICA (1-2 horas):
    - Técnico verifica viabilidade
@@ -154,7 +155,7 @@ IMPORTANTE: Instalação 100% GRATUITA!`,
     {
       question: "Qual o horário de atendimento?",
       answer:
-        "Nosso suporte técnico e comercial atende de Segunda a Sexta das 08h às 18h e aos Sábados das 08h às 12h. Fora desses horários, temos monitoramento de rede ativo.",
+        "Nosso suporte técnico e comercial atende de Segunda a Sexta das 08h às 17:30h e aos Sábados das 08h às 12h. Fora desses horários, temos monitoramento de rede ativo.",
     },
     {
       question: "A Fiber.Net atende em quais cidades?",

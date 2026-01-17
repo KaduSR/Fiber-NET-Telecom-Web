@@ -3,18 +3,13 @@ import {
   FileText,
   Headphones,
   MessageCircle,
+  PhoneOutgoing,
   X,
 } from "lucide-react";
 import React, { useEffect } from "react";
-<<<<<<< HEAD
-import { CONTACT_INFO } from "../../constants";
-import Button from "./Button";
-import FiberNetTextLogo from "./FiberNetTextLogo";
-=======
 import Button from "../Button";
 import FiberNetTextLogo from "../FiberNetTextLogo";
 import { CONTACT_INFO } from "./../../types/constants";
->>>>>>> main
 
 interface SupportModalProps {
   isOpen: boolean;
@@ -45,6 +40,13 @@ const SupportModal: React.FC<SupportModalProps> = ({
       onNavigate("client-area");
     }
     onClose();
+  };
+
+  const ligar = () => {
+    const telefone = "552424581861";
+    if (window.confirm("Deseja realizar a ligação agora?")) {
+      window.location.href = `tel:${telefone}`;
+    }
   };
 
   const handleSegundaViaClick = () => {
@@ -91,9 +93,11 @@ const SupportModal: React.FC<SupportModalProps> = ({
 
         {/* Body */}
         <div className="p-6 space-y-4">
-          <p className="text-gray-400 text-sm mb-4">
-            Escolha como deseja falar com a equipe <FiberNetTextLogo />. Nosso
-            atendimento é **exclusivamente** via WhatsApp!
+          <p className="text-gray-400 text-sm mb-4 text-center">
+            Escolha como deseja falar com a equipe <FiberNetTextLogo />.
+            <p className="text-center">
+              Atendimento via WhatsApp ou por telefone fixo.
+            </p>
           </p>
 
           {/* WhatsApp Option */}
@@ -101,7 +105,7 @@ const SupportModal: React.FC<SupportModalProps> = ({
             onClick={() =>
               window.open(
                 `https://wa.me/55${CONTACT_INFO.whatsapp.replace(/\D/g, "")}`,
-                "_blank"
+                "_blank",
               )
             }
             className="w-full flex items-center justify-between p-4 bg-neutral-800 hover:bg-fiber-green/10 border border-white/5 hover:border-fiber-green/50 rounded-xl group transition-all focus:outline-none focus:ring-2 focus:ring-fiber-green"
@@ -148,6 +152,30 @@ const SupportModal: React.FC<SupportModalProps> = ({
               aria-hidden="true"
             />
           </button>
+
+          {/* Ligação Rápida Option */}
+          <button
+            onClick={ligar}
+            className="w-full flex items-center justify-between p-4 bg-neutral-800 hover:bg-fiber-red/10 border border-white/5 hover:border-fiber-red/50 rounded-xl group transition-all focus:outline-none focus:ring-2 focus:ring-fiber-red"
+            aria-label="Telefone Fixo"
+          >
+            <div className="flex items-center gap-4">
+              <div className="bg-fiber-red/20 p-3 rounded-full text-fiber-red group-hover:scale-110 transition-transform">
+                <PhoneOutgoing size={24} aria-hidden="true" />
+              </div>
+              <div className="text-left">
+                <div className="text-white font-bold">Telefone Fixo</div>
+                <div className="text-xs text-gray-400">
+                  Acesso rápido para o telefone fixo
+                </div>
+              </div>
+            </div>
+            <ExternalLink
+              size={16}
+              className="text-gray-500 group-hover:text-fiber-red"
+              aria-hidden="true"
+            />
+          </button>
         </div>
 
         {/* Footer Actions */}
@@ -162,7 +190,7 @@ const SupportModal: React.FC<SupportModalProps> = ({
           </Button>
           <div className="mt-4 text-center">
             <p className="text-[10px] text-red-500 uppercase tracking-wider font-bold">
-              NÃO ACEITAMOS LIGAÇÕES!!
+              ❌ NÃO ACEITAMOS LIGAÇÕES VIA WHATSAPP.
             </p>
             <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-2">
               Horário de Atendimento
