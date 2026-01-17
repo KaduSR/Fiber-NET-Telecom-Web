@@ -10,7 +10,7 @@ import {
   Zap,
 } from "lucide-react";
 import React from "react";
-import { Plan } from "../../types";
+import { Plan } from "../types/types";
 import Button from "./Button";
 
 interface PlanCardProps {
@@ -139,7 +139,7 @@ const PlanCard: React.FC<PlanCardProps> = ({ plan }) => {
         onClick={() =>
           window.open(
             `https://wa.me/552424581861?text=Olá, gostaria de saber mais sobre o plano de ${plan.speed}`,
-            "_blank"
+            "_blank",
           )
         }
         aria-label={`Assinar plano de ${plan.speed} agora via WhatsApp`}

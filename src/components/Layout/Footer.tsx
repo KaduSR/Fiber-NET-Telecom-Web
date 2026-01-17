@@ -12,8 +12,8 @@ import FiberNetLogo from "../FiberNetLogo";
 interface FooterProps {
   onNavigate?: (page: string) => void;
   currentPage?: string;
-  onOpenSupport?: () => void;
   onOpenSegundaVia?: () => void;
+  onOpenSupport?: () => void;
 }
 
 const Footer: React.FC<FooterProps> = ({
@@ -201,7 +201,7 @@ const Footer: React.FC<FooterProps> = ({
               <div className="pt-2">
                 <span className="inline-flex items-center gap-2 px-3 py-1 bg-red-500/10 border border-red-500/20 rounded-full text-[10px] font-bold text-red-400 uppercase tracking-wide">
                   <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
-                  Não aceitamos ligações
+                  ❌ NÃO ACEITAMOS LIGAÇÕES VIA WHATSAPP.
                 </span>
               </div>
             </div>
