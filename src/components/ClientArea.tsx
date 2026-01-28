@@ -1401,9 +1401,9 @@ const ClientArea: React.FC = () => {
                             <div className="w-12 h-12 rounded-xl bg-fiber-blue/10 text-fiber-blue flex items-center justify-center">
                               <MessageSquare size={24} />
                             </div>
-                            <div>
+                            <div className="flex-1">
                               <p className="font-bold text-lg text-white">
-                                {ticket.assunto}
+                                {ticket.assunto_nome || ticket.assunto}
                               </p>
                               <p className="text-xs text-gray-500 uppercase font-black mt-1">
                                 Protocolo: {ticket.protocolo} | Aberto em:{" "}
@@ -1411,6 +1411,12 @@ const ClientArea: React.FC = () => {
                                   ? ticket.data_abertura.split(" ")[0].split("-").reverse().join("/")
                                   : "N/A"}
                               </p>
+                              {ticket.resolucao && (
+                                <div className="mt-3 p-3 bg-black/20 rounded-lg border border-white/5">
+                                  <p className="text-[10px] text-fiber-blue uppercase font-black mb-1">Resolução/Mensagem:</p>
+                                  <p className="text-sm text-gray-300 italic">"{ticket.resolucao}"</p>
+                                </div>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-3 w-full md:w-auto">
@@ -1453,9 +1459,9 @@ const ClientArea: React.FC = () => {
                             <div className="w-12 h-12 rounded-xl bg-fiber-orange/10 text-fiber-orange flex items-center justify-center">
                               <Wrench size={24} />
                             </div>
-                            <div>
+                            <div className="flex-1">
                               <p className="font-bold text-lg text-white">
-                                {os.assunto || "Manutenção/Instalação"}
+                                {os.assunto_nome || os.assunto || "Manutenção/Instalação"}
                               </p>
                               <p className="text-xs text-gray-500 uppercase font-black mt-1">
                                 Protocolo: {os.protocolo} | Data:{" "}
@@ -1463,6 +1469,12 @@ const ClientArea: React.FC = () => {
                                   ? os.data_abertura.split(" ")[0].split("-").reverse().join("/")
                                   : "N/A"}
                               </p>
+                              {os.resolucao && (
+                                <div className="mt-3 p-3 bg-black/20 rounded-lg border border-white/5">
+                                  <p className="text-[10px] text-fiber-orange uppercase font-black mb-1">Resolução/Conclusão:</p>
+                                  <p className="text-sm text-gray-300 italic">"{os.resolucao}"</p>
+                                </div>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-3 w-full md:w-auto">

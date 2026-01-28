@@ -111,17 +111,21 @@ export interface OrdemServico {
   data_abertura: string;
   mensagem: string;
   assunto?: string;
+  assunto_nome?: string;
   data_fechamento?: string;
+  resolucao?: string;
 }
 
 export interface Ticket {
   id: string;
   protocolo: string;
   assunto: string;
+  assunto_nome?: string;
   status: string;
   data_abertura: string;
   mensagem: string;
   prioridade?: string;
+  resolucao?: string;
 }
 
 export interface Termo {
