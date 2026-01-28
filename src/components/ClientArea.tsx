@@ -30,6 +30,8 @@ import {
   Wifi,
   X,
   Zap,
+  MessageSquare,
+  Wrench,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { apiService } from "../../services/apiService";
@@ -580,6 +582,8 @@ const ClientArea: React.FC = () => {
     { id: "dashboard", label: "Visão Geral", icon: LayoutDashboard },
     // { id: "ai_support", label: "Suporte IA", icon: Bot, badge: "NOVO" },
     { id: "invoices", label: "Faturas", icon: FileText },
+    { id: "tickets", label: "Suporte", icon: MessageSquare },
+    { id: "service_orders", label: "Ordens de Serviço", icon: Wrench },
     { id: "connections", label: "Conexões", icon: Wifi },
     { id: "consumption", label: "Extrato", icon: BarChart3 },
     { id: "contracts", label: "Contratos", icon: FileSignature },
@@ -1330,6 +1334,110 @@ const ClientArea: React.FC = () => {
                           </p>
                         </div>
                       )}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "tickets" && (
+                <div>
+                  <h2 className="text-2xl font-bold text-white mb-6">
+                    Suporte e Atendimento
+                  </h2>
+                  <div className="space-y-4">
+                    {(dashboardData?.tickets || []).length > 0 ? (
+                      dashboardData?.tickets.map((ticket) => (
+                        <div
+                          key={ticket.id}
+                          className="bg-neutral-900 border border-white/10 rounded-2xl p-5 flex flex-col md:flex-row justify-between items-center gap-4 hover:border-white/20 transition-all"
+                        >
+                          <div className="flex items-center gap-4 w-full md:w-auto">
+                            <div className="w-12 h-12 rounded-xl bg-fiber-blue/10 text-fiber-blue flex items-center justify-center">
+                              <MessageSquare size={24} />
+                            </div>
+                            <div>
+                              <p className="font-bold text-lg text-white">
+                                {ticket.assunto}
+                              </p>
+                              <p className="text-xs text-gray-500 uppercase font-black mt-1">
+                                Protocolo: {ticket.protocolo} | Aberto em:{" "}
+                                {ticket.data_abertura
+                                  ? ticket.data_abertura.split(" ")[0].split("-").reverse().join("/")
+                                  : "N/A"}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 w-full md:w-auto">
+                            <span
+                              className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase border ${
+                                ticket.status === "F"
+                                  ? "bg-green-500/20 text-green-400 border-green-500/30"
+                                  : "bg-fiber-orange/20 text-fiber-orange border-fiber-orange/30"
+                              }`}
+                            >
+                              {ticket.status === "F" ? "Finalizado" : "Em Aberto"}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-20 bg-neutral-900/50 rounded-3xl border border-dashed border-white/10">
+                        <p className="text-gray-500 font-medium">
+                          Você não possui tickets de suporte abertos.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "service_orders" && (
+                <div>
+                  <h2 className="text-2xl font-bold text-white mb-6">
+                    Ordens de Serviço
+                  </h2>
+                  <div className="space-y-4">
+                    {(dashboardData?.ordensServico || []).length > 0 ? (
+                      dashboardData?.ordensServico.map((os) => (
+                        <div
+                          key={os.id}
+                          className="bg-neutral-900 border border-white/10 rounded-2xl p-5 flex flex-col md:flex-row justify-between items-center gap-4 hover:border-white/20 transition-all"
+                        >
+                          <div className="flex items-center gap-4 w-full md:w-auto">
+                            <div className="w-12 h-12 rounded-xl bg-fiber-orange/10 text-fiber-orange flex items-center justify-center">
+                              <Wrench size={24} />
+                            </div>
+                            <div>
+                              <p className="font-bold text-lg text-white">
+                                {os.assunto || "Manutenção/Instalação"}
+                              </p>
+                              <p className="text-xs text-gray-500 uppercase font-black mt-1">
+                                Protocolo: {os.protocolo} | Data:{" "}
+                                {os.data_abertura
+                                  ? os.data_abertura.split(" ")[0].split("-").reverse().join("/")
+                                  : "N/A"}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 w-full md:w-auto">
+                            <span
+                              className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase border ${
+                                os.status === "F"
+                                  ? "bg-green-500/20 text-green-400 border-green-500/30"
+                                  : "bg-fiber-orange/20 text-fiber-orange border-fiber-orange/30"
+                              }`}
+                            >
+                              {os.status === "F" ? "Concluída" : "Agendada"}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-20 bg-neutral-900/50 rounded-3xl border border-dashed border-white/10">
+                        <p className="text-gray-500 font-medium">
+                          Nenhuma ordem de serviço encontrada.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
