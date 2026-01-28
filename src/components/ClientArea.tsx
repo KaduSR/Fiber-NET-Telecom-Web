@@ -92,6 +92,9 @@ const ConsumptionChart: React.FC<{ history?: Consumo["history"] }> = ({
     }))
     .reverse();
 
+  const totalDownload = data.reduce((acc, curr) => acc + curr.download, 0);
+  const totalUpload = data.reduce((acc, curr) => acc + curr.upload, 0);
+
   if (!history || data.length === 0) {
     return (
       <div className="h-64 flex items-center justify-center text-gray-500 bg-black/20 rounded-xl mt-6">
@@ -127,32 +130,46 @@ const ConsumptionChart: React.FC<{ history?: Consumo["history"] }> = ({
 
   return (
     <div className="bg-black/20 border border-white/5 rounded-2xl p-6 mt-6 relative overflow-hidden">
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
-        <h3 className="text-white font-bold flex items-center gap-2">
-          <Activity size={18} className="text-fiber-orange" /> Histórico de
-          Consumo
-        </h3>
-        <div className="flex bg-white/5 p-1 rounded-full border border-white/10">
-          <button
-            onClick={() => setPeriod("daily")}
-            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-              period === "daily"
-                ? "bg-fiber-orange text-white shadow-lg"
-                : "text-gray-400 hover:text-white"
-            }`}
-          >
-            Diário
-          </button>
-          <button
-            onClick={() => setPeriod("monthly")}
-            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-              period === "monthly"
-                ? "bg-fiber-orange text-white shadow-lg"
-                : "text-gray-400 hover:text-white"
-            }`}
-          >
-            Mensal
-          </button>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="bg-white/5 border border-white/5 p-4 rounded-2xl">
+          <p className="text-[10px] text-gray-500 uppercase font-black mb-1">
+            Total Download
+          </p>
+          <p className="text-2xl font-bold text-white">
+            {totalDownload.toFixed(2)} GB
+          </p>
+        </div>
+        <div className="bg-white/5 border border-white/5 p-4 rounded-2xl">
+          <p className="text-[10px] text-gray-500 uppercase font-black mb-1">
+            Total Upload
+          </p>
+          <p className="text-2xl font-bold text-white">
+            {totalUpload.toFixed(2)} GB
+          </p>
+        </div>
+        <div className="flex items-center justify-end">
+          <div className="flex bg-white/5 p-1 rounded-full border border-white/10">
+            <button
+              onClick={() => setPeriod("daily")}
+              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
+                period === "daily"
+                  ? "bg-fiber-orange text-white shadow-lg"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              Diário
+            </button>
+            <button
+              onClick={() => setPeriod("monthly")}
+              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
+                period === "monthly"
+                  ? "bg-fiber-orange text-white shadow-lg"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              Mensal
+            </button>
+          </div>
         </div>
       </div>
       <div className="h-64 w-full relative group">
@@ -303,6 +320,7 @@ const ClientArea: React.FC = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isPixModalOpen, setPixModalOpen] = useState(false);
   const [isNewTicketModalOpen, setNewTicketModalOpen] = useState(false);
+  const [isSigning, setIsSigning] = useState(false);
   const [activePixCode, setActivePixCode] = useState("");
   const [pixImage, setPixImage] = useState<string | null>(null); // <--- NOVO
   const [loadingPix, setLoadingPix] = useState(false); // <--- NOVO
@@ -439,6 +457,22 @@ const ClientArea: React.FC = () => {
           })),
         3000
       );
+    }
+  };
+
+  const handleSignContract = async (idTermo: number) => {
+    if (!window.confirm("Você confirma a assinatura digital deste contrato?"))
+      return;
+
+    setIsSigning(true);
+    try {
+      await apiService.assinarContrato(idTermo);
+      alert("Contrato assinado com sucesso!");
+      fetchDashboardData();
+    } catch (err: any) {
+      alert(err.message || "Erro ao assinar contrato.");
+    } finally {
+      setIsSigning(false);
     }
   };
 
@@ -585,6 +619,7 @@ const ClientArea: React.FC = () => {
     { id: "dashboard", label: "Visão Geral", icon: LayoutDashboard },
     // { id: "ai_support", label: "Suporte IA", icon: Bot, badge: "NOVO" },
     { id: "invoices", label: "Faturas", icon: FileText },
+    { id: "contracts", label: "Assinatura", icon: FileSignature },
     { id: "tickets", label: "Suporte", icon: MessageSquare },
     { id: "service_orders", label: "Ordens de Serviço", icon: Wrench },
     { id: "connections", label: "Conexões", icon: Wifi },
@@ -1465,64 +1500,118 @@ const ClientArea: React.FC = () => {
 
               {activeTab === "contracts" && dashboardData && (
                 <div className="space-y-8">
-                  <div className="bg-white text-gray-800 rounded-lg overflow-hidden shadow-lg font-sans">
-                    <div className="bg-nubank-primary p-6 flex justify-between items-center text-white">
-                      <div className="flex items-center gap-4">
-                        <FileText size={40} className="opacity-80" />
-                        <div>
-                          <h2 className="text-2xl font-bold">Contratos</h2>
-                          <p className="text-purple-200 text-sm">
-                            Gerencie seus contratos.
-                          </p>
-                        </div>
+                  {/* Termos Pendentes de Assinatura */}
+                  {(dashboardData.termos || []).filter((t) => t.status === "P")
+                    .length > 0 && (
+                    <div className="bg-fiber-orange/10 border border-fiber-orange/20 rounded-2xl p-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <AlertCircle className="text-fiber-orange" size={24} />
+                        <h3 className="text-xl font-bold text-white">
+                          Assinatura Pendente
+                        </h3>
+                      </div>
+                      <p className="text-gray-400 text-sm mb-6">
+                        Você possui contratos aguardando sua assinatura digital.
+                        Assine agora para evitar interrupções no serviço.
+                      </p>
+                      <div className="space-y-3">
+                        {dashboardData.termos
+                          .filter((t) => t.status === "P")
+                          .map((termo) => (
+                            <div
+                              key={termo.id}
+                              className="bg-neutral-900 border border-white/5 rounded-xl p-4 flex justify-between items-center"
+                            >
+                              <span className="text-white font-medium">
+                                {termo.titulo || `Termo de Adesão #${termo.id}`}
+                              </span>
+                              <Button
+                                variant="primary"
+                                className="!py-2 !px-4 !text-xs"
+                                onClick={() => handleSignContract(termo.id)}
+                                disabled={isSigning}
+                              >
+                                {isSigning ? (
+                                  <Loader2 size={14} className="animate-spin" />
+                                ) : (
+                                  "Assinar Digitalmente"
+                                )}
+                              </Button>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Listagem de Contratos */}
+                  <div className="bg-neutral-900 border border-white/10 rounded-2xl overflow-hidden">
+                    <div className="p-6 border-b border-white/5 flex justify-between items-center">
+                      <div>
+                        <h2 className="text-2xl font-bold text-white">
+                          Meus Contratos
+                        </h2>
+                        <p className="text-gray-500 text-sm">
+                          Gestão de planos e serviços
+                        </p>
                       </div>
                       <div className="text-right">
-                        <div className="text-3xl font-bold">
+                        <div className="text-2xl font-bold text-fiber-green">
                           {
                             dashboardData.contratos.filter(
                               (c) => c.status === "A"
                             ).length
                           }
                         </div>
-                        <div className="text-xs text-purple-200 uppercase tracking-wider">
-                          contratos ativos
+                        <div className="text-[10px] text-gray-500 uppercase font-black">
+                          Ativos
                         </div>
                       </div>
                     </div>
-                    {dashboardData.contratos.map((contrato) => (
-                      <div
-                        key={contrato.id}
-                        className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border-b border-gray-100 items-center hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="flex justify-center md:justify-start">
-                          <div
-                            className={`w-8 h-8 rounded flex items-center justify-center ${
-                              contrato.status === "A"
-                                ? "bg-green-500 text-white"
-                                : "bg-red-500 text-white"
-                            }`}
-                          >
-                            <ThumbsUp size={16} fill="currentColor" />
+
+                    <div className="divide-y divide-white/5">
+                      {dashboardData.contratos.map((contrato) => (
+                        <div
+                          key={contrato.id}
+                          className="p-6 flex flex-col md:flex-row justify-between items-center gap-4 hover:bg-white/5 transition-colors"
+                        >
+                          <div className="flex items-center gap-4 w-full md:w-auto">
+                            <div
+                              className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                contrato.status === "A"
+                                  ? "bg-fiber-green/10 text-fiber-green"
+                                  : "bg-red-500/10 text-red-500"
+                              }`}
+                            >
+                              <FileSignature size={20} />
+                            </div>
+                            <div>
+                              <p className="font-bold text-white">
+                                {contrato.descricao_aux_plano_venda ||
+                                  "Plano de Internet"}
+                              </p>
+                              <p className="text-xs text-gray-500 uppercase font-black">
+                                ID: {contrato.id} | Status:{" "}
+                                {contrato.status === "A" ? "Ativo" : "Inativo"}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3 w-full md:w-auto">
+                            <Button
+                              variant="outline"
+                              className="!py-2 !px-4 !text-xs gap-2"
+                              onClick={() =>
+                                contrato.pdf_link &&
+                                window.open(contrato.pdf_link, "_blank")
+                              }
+                              disabled={!contrato.pdf_link}
+                            >
+                              <Printer size={14} /> Imprimir Contrato
+                            </Button>
                           </div>
                         </div>
-                        <div className="md:col-span-2 font-medium text-gray-700">
-                          {contrato.descricao_aux_plano_venda || "Plano Padrão"}
-                        </div>
-                        <div className="flex justify-center gap-3 text-gray-400">
-                          <button
-                            onClick={() =>
-                              contrato.pdf_link &&
-                              window.open(contrato.pdf_link, "_blank")
-                            }
-                            className="hover:text-gray-600 transition-colors"
-                            title="Imprimir Contrato"
-                            disabled={!contrato.pdf_link}
-                          >
-                            <Printer size={18} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}

@@ -124,6 +124,17 @@ export interface Ticket {
   prioridade?: string;
 }
 
+export interface Termo {
+  id: number;
+  id_contrato: number;
+  id_modelo_termo: number;
+  data_aceite?: string;
+  ip_aceite?: string;
+  status: 'P' | 'A' | 'C';
+  titulo?: string;
+  conteudo?: string;
+}
+
 export interface OntInfo {
   id: string;
   serial_number?: string;
@@ -166,6 +177,7 @@ export interface DashboardResponse {
   notas: NotaFiscal[]; 
   ordensServico: OrdemServico[];
   tickets: Ticket[];
+  termos: Termo[];
   ontInfo: OntInfo[];
   consumo: Consumo;
   ai_analysis?: AiAnalysis; 

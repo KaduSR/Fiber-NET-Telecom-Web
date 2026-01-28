@@ -161,6 +161,7 @@ class ApiService {
       notas: rawData.notas || [],
       ordensServico: rawData.ordensServico || [],
       tickets: rawData.tickets || [],
+      termos: rawData.termos || [],
       ontInfo: rawData.ontInfo || [],
       consumo: rawData.consumo || {
         total_download: "0 GB",
@@ -256,6 +257,12 @@ class ApiService {
     return this.request<any>("/tickets", {
       method: "POST",
       body: JSON.stringify(payload),
+    });
+  }
+
+  async assinarContrato(idTermo: number): Promise<any> {
+    return this.request<any>(`/contratos/assinar/${idTermo}`, {
+      method: "POST",
     });
   }
 
