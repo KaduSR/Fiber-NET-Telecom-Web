@@ -32,12 +32,14 @@ import {
   Zap,
   MessageSquare,
   Wrench,
+  Plus,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { apiService } from "../../services/apiService";
 import { Consumo, DashboardResponse } from "../../types/api";
 import AIInsights from "./AIInsights";
 import Button from "./Button";
+import NewTicketModal from "./Modals/NewTicketModal";
 
 const DASH_CACHE_KEY = "fiber_dashboard_cache_v5_forced";
 
@@ -300,6 +302,7 @@ const ClientArea: React.FC = () => {
   const [showLoginPass, setShowLoginPass] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isPixModalOpen, setPixModalOpen] = useState(false);
+  const [isNewTicketModalOpen, setNewTicketModalOpen] = useState(false);
   const [activePixCode, setActivePixCode] = useState("");
   const [pixImage, setPixImage] = useState<string | null>(null); // <--- NOVO
   const [loadingPix, setLoadingPix] = useState(false); // <--- NOVO
@@ -1340,9 +1343,18 @@ const ClientArea: React.FC = () => {
 
               {activeTab === "tickets" && (
                 <div>
-                  <h2 className="text-2xl font-bold text-white mb-6">
-                    Suporte e Atendimento
-                  </h2>
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold text-white">
+                      Suporte e Atendimento
+                    </h2>
+                    <Button
+                      variant="primary"
+                      className="!py-2 !px-4 !text-xs gap-2 !rounded-xl"
+                      onClick={() => alert("Funcionalidade de criação de ticket em breve!")}
+                    >
+                      <Plus size={16} /> Novo Atendimento
+                    </Button>
+                  </div>
                   <div className="space-y-4">
                     {(dashboardData?.tickets || []).length > 0 ? (
                       dashboardData?.tickets.map((ticket) => (
@@ -1736,6 +1748,16 @@ const ClientArea: React.FC = () => {
           </main>
         </div>
       </div>
+
+      <NewTicketModal
+        isOpen={isNewTicketModalOpen}
+        onClose={() => setNewTicketModalOpen(false)}
+        onSuccess={() => {
+          alert("Atendimento criado com sucesso!");
+          fetchDashboardData();
+        }}
+        clientId={dashboardData?.clientes[0]?.id || 0}
+      />
 
       {isPixModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">

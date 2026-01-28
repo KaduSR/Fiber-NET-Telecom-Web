@@ -248,6 +248,17 @@ class ApiService {
     return this.request<any>(url, { method: "POST" });
   }
 
+  async createTicket(payload: {
+    id_cliente: string;
+    titulo: string;
+    menssagem: string;
+  }): Promise<any> {
+    return this.request<any>("/tickets", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
   async recoverPassword(email: string): Promise<{ message: string }> {
     return this.request<{ message: string }>(ENDPOINTS.RECOVERY, {
       method: "POST",
