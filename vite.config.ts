@@ -25,7 +25,8 @@ export default defineConfig({
     proxy: {
       "/api-proxy": {
         // 👇 AQUI: Mude de localhost para a URL de produção
-        target: "https://api.centralfiber.online",
+        // target: "https://api.centralfiber.online",
+        target: "http://localhost:3001",
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api-proxy/, ""),

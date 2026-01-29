@@ -19,7 +19,7 @@ class ApiService {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
   ): Promise<T> {
     const cleanBase = API_BASE_URL.endsWith("/")
       ? API_BASE_URL.slice(0, -1)
@@ -106,7 +106,7 @@ class ApiService {
     // 3. Normalizar Logins
     const logins = (rawData.logins || []).map((l: any) => {
       const ont = (rawData.ontInfo || []).find(
-        (o: any) => String(o.id_login) === String(l.id)
+        (o: any) => String(o.id_login) === String(l.id),
       );
 
       return {
@@ -179,7 +179,7 @@ class ApiService {
   // === MÉTODOS DE BOLETOS E PIX ===
 
   async getPixCode(
-    faturaId: string | number
+    faturaId: string | number,
   ): Promise<{ qrcode: string; imagem: string }> {
     try {
       // @ts-ignore
@@ -215,7 +215,7 @@ class ApiService {
 
   // 🔥 CORREÇÃO PRINCIPAL: Adicionado 'getSegundaVia' que faltava
   async getSegundaVia(
-    id: number | string
+    id: number | string,
   ): Promise<{ base64_document: string }> {
     // Aponta para a rota correta do seu backend
     const url = `/boletos/${id}/segunda-via`;
@@ -230,7 +230,7 @@ class ApiService {
   }
 
   async imprimirNotaFiscal(
-    id: number | string
+    id: number | string,
   ): Promise<{ base64_document: string }> {
     const url = `/notas/${id}/imprimir`;
     return this.request<{ base64_document: string }>(url, {
@@ -263,6 +263,12 @@ class ApiService {
   async assinarContrato(idTermo: number): Promise<any> {
     return this.request<any>(`/contratos/assinar/${idTermo}`, {
       method: "POST",
+    });
+  }
+
+  async getContratoPdf(id: number): Promise<{ base64_document: string }> {
+    return this.request<{ base64_document: string }>(`/contratos/${id}/pdf`, {
+      method: "GET",
     });
   }
 
