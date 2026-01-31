@@ -693,7 +693,7 @@ const ClientArea: React.FC = () => {
   const TABS = [
     { id: "dashboard", label: "Visão Geral", icon: LayoutDashboard },
     // { id: "ai_support", label: "Suporte IA", icon: Bot, badge: "NOVO" },
-    { id: "invoices", label: "Faturas", icon: FileText },
+    { id: "invoices", label: "Faturas", icon: FileText, badge: faturasAbertas },
     { id: "tickets", label: "Suporte", icon: MessageSquare },
     { id: "service_orders", label: "Ordens de Serviço", icon: Wrench },
     { id: "connections", label: "Conexões", icon: Wifi },
