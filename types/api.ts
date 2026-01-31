@@ -110,6 +110,18 @@ export interface OrdemServico {
   protocolo: string;
   data_abertura: string;
   mensagem: string;
+  assunto?: string;
+  data_fechamento?: string;
+}
+
+export interface Ticket {
+  id: string;
+  protocolo: string;
+  assunto: string;
+  status: string;
+  data_abertura: string;
+  mensagem: string;
+  prioridade?: string;
 }
 
 export interface OntInfo {
@@ -153,6 +165,7 @@ export interface DashboardResponse {
   logins: Login[];
   notas: NotaFiscal[]; 
   ordensServico: OrdemServico[];
+  tickets: Ticket[];
   ontInfo: OntInfo[];
   consumo: Consumo;
   ai_analysis?: AiAnalysis; 

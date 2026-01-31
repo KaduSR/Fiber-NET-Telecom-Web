@@ -160,6 +160,7 @@ class ApiService {
       logins,
       notas: rawData.notas || [],
       ordensServico: rawData.ordensServico || [],
+      tickets: rawData.tickets || [],
       ontInfo: rawData.ontInfo || [],
       consumo: rawData.consumo || {
         total_download: "0 GB",

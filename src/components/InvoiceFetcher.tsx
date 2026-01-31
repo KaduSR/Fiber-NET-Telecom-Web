@@ -52,11 +52,13 @@ const InvoiceFetcher: React.FC = () => {
   const handleViewPdf = async (id: number | string) => {
     setLoadingPdfId(id);
     try {
-      const response = await apiService.getInvoicePdf(id);
+      const response = await apiService.getSegundaVia(id);
+      // @ts-ignore
       if (response.url) {
+        // @ts-ignore
         window.open(response.url, "_blank");
-      } else if (response.base64 || response.base64_document) {
-        const b64 = response.base64 || response.base64_document;
+      } else if (response.base64_document) {
+        const b64 = response.base64_document;
         if (b64) {
           const byteCharacters = atob(b64);
           const byteNumbers = new Array(byteCharacters.length);
