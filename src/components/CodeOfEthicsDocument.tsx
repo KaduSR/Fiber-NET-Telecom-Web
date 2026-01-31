@@ -1,8 +1,7 @@
+import { ArrowLeft, Download, FileText, Printer } from "lucide-react";
 import React from "react";
-import { FileText, Download, Shield, ArrowLeft, Printer } from "lucide-react";
-import Button from "./Button";
-import FiberNetLogo from "./FiberNetLogo";
 import { generateEthicsCodePDF } from "../../utils/generateEthicsCodePDF";
+import Button from "./Button";
 
 interface CodeOfEthicsDocumentProps {
   onNavigate?: (page: string) => void;

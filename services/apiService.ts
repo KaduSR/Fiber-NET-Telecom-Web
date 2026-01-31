@@ -1,5 +1,7 @@
-import { DashboardResponse, LoginResponse } from "../types/api";
+// src/services/apiService.ts
+// cspell: disable
 import { API_BASE_URL, ENDPOINTS } from "../config";
+import { DashboardResponse, LoginResponse } from "../types/api";
 
 class ApiService {
   private getHeaders(): HeadersInit {
@@ -17,7 +19,7 @@ class ApiService {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
   ): Promise<T> {
     const cleanBase = API_BASE_URL.endsWith("/")
       ? API_BASE_URL.slice(0, -1)
@@ -26,7 +28,7 @@ class ApiService {
     const url = `${cleanBase}${cleanEndpoint}`;
 
     try {
-      console.log(`[Frontend] Requesting: ${url}`);
+      // console.log(`[Frontend] Requesting: ${url}`);
       const response = await fetch(url, {
         ...options,
         headers: {
@@ -47,7 +49,7 @@ class ApiService {
 
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
-          localStorage.removeItem("authToken");
+          this.logout();
         }
         const errorMessage =
           data.error || data.message || `Erro ${response.status}`;
@@ -61,7 +63,7 @@ class ApiService {
     }
   }
 
-  // === MÉTODOS ===
+  // === MÉTODOS DE AUTH ===
 
   async login(credentials: {
     email: string;
@@ -74,9 +76,17 @@ class ApiService {
 
     if (data.token) {
       localStorage.setItem("authToken", data.token);
+      window.dispatchEvent(new Event("auth-change"));
     }
     return data;
   }
+
+  logout() {
+    localStorage.removeItem("authToken");
+    window.dispatchEvent(new Event("auth-change"));
+  }
+
+  // === MÉTODOS DO DASHBOARD ===
 
   async getDashboard(): Promise<DashboardResponse> {
     const rawData = await this.request<any>(ENDPOINTS.DASHBOARD, {
@@ -89,61 +99,57 @@ class ApiService {
     // 2. Normalizar Contratos
     const contratos = (rawData.contratos || []).map((c: any) => ({
       ...c,
-      // Garante que o plano tenha um nome amigável
       plano: c.plano || c.descricao_aux_plano_venda || "Plano Fiber",
-      // Fallback de endereço: se não vier no contrato, pega do primeiro cliente encontrado
       endereco: c.endereco || clientes[0]?.endereco || "",
     }));
 
-    // 3. Normalizar Logins (Enriquecer com dados da ONT)
+    // 3. Normalizar Logins
     const logins = (rawData.logins || []).map((l: any) => {
-      // Tenta encontrar dados técnicos da ONT (sinal, modelo, etc) vinculados a este login
-      // A vinculação é feita via id_login na lista ontInfo que vem separada
       const ont = (rawData.ontInfo || []).find(
-        (o: any) => String(o.id_login) === String(l.id)
+        (o: any) => String(o.id_login) === String(l.id),
       );
 
       return {
         ...l,
-        // Se contrato_id vier nulo, tentamos vincular ao primeiro contrato ativo como fallback visual
         contrato_id: l.contrato_id || contratos[0]?.id,
-
-        // Normalização de status (S/N ou online/offline)
         online: l.status === "online" || l.online === "S" ? "S" : "N",
-
-        // Formata uptime
         tempo_conectado: l.uptime ? this.formatUptime(l.uptime) : "Recente",
-
-        // Dados Técnicos (Prioridade: ONT Info > Login Info > Default)
         sinal_ultimo_atendimento:
           ont?.sinal_rx || l.sinal_ultimo_atendimento || "- dBm",
         ont_modelo: ont?.onu_tipo || ont?.modelo || "ONU Padrão",
-
-        // Campos específicos mapeados para a interface
         ont_sinal_rx: ont?.sinal_rx,
         ont_sinal_tx: ont?.sinal_tx,
         ont_temperatura: ont?.temperatura,
         ont_mac: ont?.mac,
-
         ip_publico: l.ip_publico || "Automático",
       };
     });
 
-    // 4. Normalizar Faturas
+    // 4. Normalizar Faturas (CORRIGIDO PARA O HISTÓRICO)
     const faturas = (rawData.faturas || []).map((f: any) => {
-      // Normaliza status: 'pago', 'C', 'P', 'baixado' -> 'C' (Concluído/Pago).
-      // Qualquer outra coisa (ex: 'Aberto', 'A', 'Pendente') -> 'A' (Aberto).
-      const st = f.status ? String(f.status).toLowerCase() : "";
-      const isPaid = ["pago", "baixado", "c", "p", "liquidado"].includes(st);
-      const statusNormalizado = isPaid ? "C" : "A";
+      const statusLower = f.status ? String(f.status).toLowerCase() : "";
+
+      // Lógica de Status: "A" (Aberto), "P" (Pago/Parcial), "C" (Cancelado)
+      let statusNormalizado = "A";
+
+      // Se tiver 'recebido', 'pago' ou 'liquidado', marcamos como "P" (Pago)
+      // para aparecer no Histórico corretamente.
+      if (["r", "p", "pago", "recebido", "liquidado"].includes(statusLower)) {
+        statusNormalizado = "P";
+      }
+
+      if (statusLower === "c" || statusLower === "cancelado") {
+        statusNormalizado = "C";
+      }
 
       return {
         ...f,
-        // Mantém os dados originais, mas adiciona campos normalizados para o frontend
         data_vencimento: f.vencimento || f.data_vencimento,
         status: statusNormalizado,
-        pix_code: null, // Será carregado sob demanda
-        pix_qrcode: null,
+        // Garante que o valor recebido seja repassado para o frontend calcular
+        valor_recebido: f.valor_recebido || f.valor_pago || 0,
+        pix_code: f.pix_code || null,
+        pix_qrcode: f.pix_qrcode || null,
       };
     });
 
@@ -154,6 +160,8 @@ class ApiService {
       logins,
       notas: rawData.notas || [],
       ordensServico: rawData.ordensServico || [],
+      tickets: rawData.tickets || [],
+      termos: rawData.termos || [],
       ontInfo: rawData.ontInfo || [],
       consumo: rawData.consumo || {
         total_download: "0 GB",
@@ -168,9 +176,10 @@ class ApiService {
     };
   }
 
-  // Método para buscar o PIX usando a rota dinâmica
+  // === MÉTODOS DE BOLETOS E PIX ===
+
   async getPixCode(
-    faturaId: string | number
+    faturaId: string | number,
   ): Promise<{ qrcode: string; imagem: string }> {
     try {
       // @ts-ignore
@@ -178,30 +187,89 @@ class ApiService {
         typeof ENDPOINTS.GET_PIX === "function"
           ? ENDPOINTS.GET_PIX(faturaId)
           : `/faturas/${faturaId}/pix`;
+      const response = await this.request<any>(url, { method: "GET" });
 
-      const response = await this.request<any>(url, {
-        method: "GET",
-      });
-
-      // O backend pode retornar { qrcode: "...", imagem: "..." } ou estrutura do IXC
       if (response.pix && response.pix.qrCode) {
         return {
-          qrcode: response.pix.qrCode.qrcode,
-          imagem: response.pix.qrCode.imagemQrcode,
+          qrcode: response.pixCopiaECola,
+          imagem: response.pixImage || "",
+        };
+      }
+
+      if (response.pix_code && response.pix_qrcode) {
+        return {
+          qrcode: response.pix_code,
+          imagem: response.pix_qrcode || "",
         };
       }
 
       return {
-        qrcode: response.qrcode || "",
-        imagem: response.imagem || "",
+        qrcode: "",
+        imagem: "",
       };
     } catch (error) {
-      console.error(
-        `[ApiService] Erro ao buscar PIX da fatura ${faturaId}:`,
-        error
-      );
+      console.error(`[ApiService] Erro PIX ${faturaId}:`, error);
       throw error;
     }
+  }
+
+  // 🔥 CORREÇÃO PRINCIPAL: Adicionado 'getSegundaVia' que faltava
+  async getSegundaVia(
+    id: number | string,
+  ): Promise<{ base64_document: string }> {
+    // Aponta para a rota correta do seu backend
+    const url = `/boletos/${id}/segunda-via`;
+    return this.request<{ base64_document: string }>(url, {
+      method: "GET",
+    });
+  }
+
+  // Mantemos 'imprimirBoleto' como apelido para compatibilidade com códigos antigos
+  async imprimirBoleto(id: number | string) {
+    return this.getSegundaVia(id);
+  }
+
+  async imprimirNotaFiscal(
+    id: number | string,
+  ): Promise<{ base64_document: string }> {
+    const url = `/notas/${id}/imprimir`;
+    return this.request<{ base64_document: string }>(url, {
+      method: "GET",
+    });
+  }
+
+  // === MÉTODOS DE AÇÃO ===
+
+  async performLoginAction(loginId: number, action: string): Promise<any> {
+    // @ts-ignore
+    const url =
+      typeof ENDPOINTS.LOGIN_ACTION === "function"
+        ? ENDPOINTS.LOGIN_ACTION(loginId, action)
+        : `/logins/${loginId}/${action}`;
+    return this.request<any>(url, { method: "POST" });
+  }
+
+  async createTicket(payload: {
+    id_cliente: string;
+    titulo: string;
+    menssagem: string;
+  }): Promise<any> {
+    return this.request<any>("/tickets", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async assinarContrato(idTermo: number): Promise<any> {
+    return this.request<any>(`/contratos/assinar/${idTermo}`, {
+      method: "POST",
+    });
+  }
+
+  async getContratoPdf(id: number): Promise<{ base64_document: string }> {
+    return this.request<{ base64_document: string }>(`/contratos/${id}/pdf`, {
+      method: "GET",
+    });
   }
 
   async recoverPassword(email: string): Promise<{ message: string }> {
@@ -218,54 +286,13 @@ class ApiService {
     });
   }
 
-  async performLoginAction(loginId: number, action: string): Promise<any> {
-    // @ts-ignore
-    const url =
-      typeof ENDPOINTS.LOGIN_ACTION === "function"
-        ? ENDPOINTS.LOGIN_ACTION(loginId, action)
-        : `/logins/${loginId}/${action}`;
+  // === UTILITÁRIOS ===
 
-    return this.request<any>(url, {
-      method: "POST",
-    });
-  }
-
-  /**
-   * Buscar o Base64 do PDF da nota fiscal
-   * @param id ID da nota fiscal
-   */
-  async imprimirNotaFiscal(
-    id: number | string
-  ): Promise<{ base64_document: string }> {
-    const url = `/notas/${id}/imprimir`;
-
-    return this.request<{ base64_document: string }>(url, {
-      method: "GET",
-    });
-  }
-
-  /**
-   * Busca o Base64 do PDF da fatura (boleto)
-   * Rota alinhada com o backend: /boletos/:id/segunda-via
-   */
-  async imprimirBoleto(
-    id: number | string
-  ): Promise<{ base64_document: string }> {
-    const url = `/boletos/${id}/segunda-via`;
-
-    return this.request<{ base64_document: string }>(url, {
-      method: "GET",
-    });
-  }
-
-  // Auxiliar para formatar segundos em dias/horas
   private formatUptime(seconds: string | number): string {
     const sec = Number(seconds);
     if (isNaN(sec)) return String(seconds);
-
     const days = Math.floor(sec / 86400);
     const hours = Math.floor((sec % 86400) / 3600);
-
     if (days > 0) return `${days}d ${hours}h`;
     return `${hours}h ${Math.floor((sec % 3600) / 60)}m`;
   }

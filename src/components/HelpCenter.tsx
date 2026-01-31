@@ -1,16 +1,16 @@
-import React, { useState } from "react";
 import {
-  Search,
-  MessageCircle,
   ChevronDown,
   ChevronRight,
-  Wrench,
   DollarSign,
-  Wifi,
   HelpCircle,
+  MessageCircle,
+  Search,
+  Wifi,
+  Wrench,
 } from "lucide-react";
+import React, { useState } from "react";
+import { CONTACT_INFO } from "../types/constants";
 import Button from "./Button";
-import { CONTACT_INFO } from "../../constants";
 
 interface HelpCenterProps {
   onNavigate?: (page: string) => void;
@@ -125,8 +125,9 @@ SE NADA RESOLVER: WhatsApp (24) 2458-1861`,
 
 1. AGENDAMENTO (Mesmo dia ou 24h):
    - Entre em contato via WhatsApp (24) 2458-1861
-   - Informe seu endereço completo
-   - Escolha o melhor horário
+   - Ou pelo telefone (24) 2458-1861
+   - Informe seu nome completo ou CPF/CNPJ
+   - Escolha o melhor Périodo para a visita técnica
 
 2. VISITA TÉCNICA (1-2 horas):
    - Técnico verifica viabilidade
@@ -154,7 +155,7 @@ IMPORTANTE: Instalação 100% GRATUITA!`,
     {
       question: "Qual o horário de atendimento?",
       answer:
-        "Nosso suporte técnico e comercial atende de Segunda a Sexta das 08h às 18h e aos Sábados das 08h às 12h. Fora desses horários, temos monitoramento de rede ativo.",
+        "Nosso suporte técnico e comercial atende de Segunda a Sexta das 08h às 17:30h e aos Sábados das 08h às 12h. Fora desses horários, temos monitoramento de rede ativo.",
     },
     {
       question: "A Fiber.Net atende em quais cidades?",
@@ -168,11 +169,7 @@ IMPORTANTE: Instalação 100% GRATUITA!`,
     },
   ],
 };
-
-const HelpCenter: React.FC<HelpCenterProps> = ({
-  onNavigate,
-  onOpenSegundaVia,
-}) => {
+const HelpCenter: React.FC<HelpCenterProps> = ({ onOpenSegundaVia }) => {
   const [activeCategory, setActiveCategory] = useState<string>("Financeiro");
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -198,7 +195,7 @@ const HelpCenter: React.FC<HelpCenterProps> = ({
   const currentQuestions = (FAQ_DATA[activeCategory] || []).filter(
     (item) =>
       item.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.answer.toLowerCase().includes(searchTerm.toLowerCase())
+      item.answer.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   return (
@@ -288,9 +285,9 @@ const HelpCenter: React.FC<HelpCenterProps> = ({
                   window.open(
                     `https://wa.me/55${CONTACT_INFO.whatsapp.replace(
                       /\D/g,
-                      ""
+                      "",
                     )}`,
-                    "_blank"
+                    "_blank",
                   )
                 }
                 className="!text-xs"
@@ -405,9 +402,9 @@ const HelpCenter: React.FC<HelpCenterProps> = ({
                   window.open(
                     `https://wa.me/55${CONTACT_INFO.whatsapp.replace(
                       /\D/g,
-                      ""
+                      "",
                     )}`,
-                    "_blank"
+                    "_blank",
                   )
                 }
               >

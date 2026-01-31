@@ -1,19 +1,17 @@
-import React from "react";
-// Correção: Caminho relativo ajustado para sair de 'components' e entrar em 'types'
-import { Plan } from "../../types/api";
 import {
   Check,
-  Wifi,
-  Zap,
+  Gamepad2,
+  Globe,
   Headphones,
   Smartphone,
-  Globe,
-  Gamepad2,
-  Wrench,
   Tv,
+  Wifi,
+  Wrench,
+  Zap,
 } from "lucide-react";
-// Correção: Button está na mesma pasta, então é './'
-import Button from "../Button";
+import React from "react";
+import { Plan } from "../types/types";
+import Button from "./Button";
 
 interface PlanCardProps {
   plan: Plan;
@@ -141,7 +139,7 @@ const PlanCard: React.FC<PlanCardProps> = ({ plan }) => {
         onClick={() =>
           window.open(
             `https://wa.me/552424581861?text=Olá, gostaria de saber mais sobre o plano de ${plan.speed}`,
-            "_blank"
+            "_blank",
           )
         }
         aria-label={`Assinar plano de ${plan.speed} agora via WhatsApp`}

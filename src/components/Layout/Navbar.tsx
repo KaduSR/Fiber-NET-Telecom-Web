@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { Menu, X, Headphones, FileText } from "lucide-react";
-import { NAV_ITEMS } from "../../../constants";
+import { Headphones, Menu, X } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { NAV_ITEMS } from "../../types/constants";
 import Button from "../Button";
 import FiberNetLogo from "../FiberNetLogo";
 
@@ -30,7 +30,7 @@ const Navbar: React.FC<NavbarProps> = ({
 
   const handleNavClick = (
     e: React.MouseEvent<HTMLAnchorElement>,
-    href: string
+    href: string,
   ) => {
     e.preventDefault();
 
@@ -142,6 +142,12 @@ const Navbar: React.FC<NavbarProps> = ({
                 variant="primary"
                 className="!py-2 !px-5 text-xs font-bold uppercase tracking-wider rounded-full"
                 onClick={() => onNavigate("client-area")}
+                // onClick={() =>
+                //   window.open(
+                //     "https://centralfiber.online/central_assinante_web/login",
+                //     "_blank"
+                //   )
+                // }
               >
                 Área do Cliente
               </Button>

@@ -1,7 +1,8 @@
-import { defineConfig } from "vite";
+// vite.config.ts
 import react from "@vitejs/plugin-react";
-import { fileURLToPath } from "url";
 import path from "path";
+import { fileURLToPath } from "url";
+import { defineConfig } from "vite";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -12,18 +13,20 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./"),
+      "@": path.resolve(__dirname, "./src"),
     },
   },
   optimizeDeps: {
     include: ["@google/genai"],
   },
-  // REMOVA O BLOCO build.rollupOptions.external QUE ESTAVA AQUI
+  build: {},
   server: {
     host: true,
     proxy: {
       "/api-proxy": {
-        target: "https://api.centralfiber.online/",
+        // 👇 AQUI: Mude de localhost para a URL de produção
+        target: "https://api.centralfiber.online",
+        // target: "http://localhost:3001",
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api-proxy/, ""),
