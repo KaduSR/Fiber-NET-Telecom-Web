@@ -1,5 +1,4 @@
 // spell:disable
-import { API_BASE_URL } from "config";
 import {
   Activity,
   AlertCircle,
@@ -37,6 +36,7 @@ import {
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { apiService } from "../../services/apiService";
+import { API_BASE_URL } from "../config";
 
 import { Consumo, DashboardResponse } from "../../types/api";
 import AIInsights from "./AIInsights";
@@ -591,14 +591,14 @@ const ClientArea: React.FC = () => {
   };
 
   useEffect(() => {
-    const saved = localStorage.getItem("fiber_saved_email");
-    if (saved) {
-      setEmailInput(saved);
-      setRememberMe(true);
-    }
-    if (isAuthenticated) {
-      fetchDashboardData();
-    }
+    const handleAuthChange = () => {
+      const token = localStorage.getItem("authToken");
+      setIsAuthenticated(!!token);
+      if (!token) setDashboardData(null); // Limpa dados antigos
+    };
+
+    window.addEventListener("auth-change", handleAuthChange);
+    return () => window.removeEventListener("auth-change", handleAuthChange);
   }, []);
 
   // useEffect(() => {
@@ -689,6 +689,9 @@ const ClientArea: React.FC = () => {
       setDownloadingContractId(null);
     }
   };
+
+  const faturasAbertas =
+    dashboardData?.faturas.filter((f) => f.status === "A").length || 0;
 
   const TABS = [
     { id: "dashboard", label: "Visão Geral", icon: LayoutDashboard },
@@ -1223,10 +1226,23 @@ const ClientArea: React.FC = () => {
 
                                 <div className="flex md:flex-col lg:flex-row gap-2 w-full md:w-auto">
                                   <button
-                                    onClick={() => handleOpenPixModal(boleto)}
+                                    onClick={() =>
+                                      handleOpenPixModal(
+                                        fatura as unknown as BoletoView,
+                                      )
+                                    }
+                                    disabled={loadingPixId === fatura.id}
                                     className="flex-1 flex items-center justify-center gap-2 bg-fiber-green text-white px-4 py-2.5 rounded-xl font-bold text-xs hover:bg-green-600 transition shadow-lg shadow-green-900/20"
                                   >
-                                    <QrCode size={16} /> PIX
+                                    {loadingPixId === fatura.id ? (
+                                      <Loader2
+                                        size={14}
+                                        className="animate-spin"
+                                      />
+                                    ) : (
+                                      <QrCode size={16} />
+                                    )}
+                                    Pagar com PIX
                                   </button>
 
                                   <button
@@ -1393,7 +1409,9 @@ const ClientArea: React.FC = () => {
                                     variant="primary"
                                     // CORREÇÃO: Passando invoice.id (number) ao invés de string
                                     onClick={() =>
-                                      handleOpenPixModal(invoice.id)
+                                      handleOpenPixModal(
+                                        invoice as unknown as BoletoView,
+                                      )
                                     }
                                     className="!py-2 !px-4 !text-xs gap-2 !rounded-xl"
                                   >
@@ -2003,7 +2021,7 @@ const ClientArea: React.FC = () => {
             </div>
 
             <Button
-              onClick={copiarPixDoModal}
+              onClick={handleCopyPix}
               fullWidth
               className="gap-2 !bg-fiber-green hover:!bg-green-600"
             >

@@ -8,7 +8,6 @@ import {
 } from "lucide-react";
 import React from "react";
 import Button from "./Button";
-import Navbar from "./Layout/Navbar";
 
 const ClientGuide: React.FC<{ onOpenSegundaVia?: () => void }> = ({
   onOpenSegundaVia,
