@@ -1,7 +1,8 @@
 import { Headphones, Loader2 } from "lucide-react";
 import React, { Suspense, useEffect, useState } from "react";
-import ClientArea from "./src/components/ClientArea";
-import PlanCard from "./src/components/PlanCard";
+import { SpeedInsights } from "@vercel/speed-insights/react";
+import ClientArea from "./src/components/Dashboard/ClientArea";
+import PlanCard from "./src/components/Dashboard/PlanCard";
 import Features from "./src/components/Features";
 import FiberNetTextLogo from "./src/components/FiberNetTextLogo";
 import Footer from "./src/components/Layout/Footer";
@@ -322,6 +323,7 @@ const App: React.FC = () => {
         </span>
       </button>
 
+      {/* Vercel Speed Insights */}
       <SpeedInsights />
     </div>
   );
