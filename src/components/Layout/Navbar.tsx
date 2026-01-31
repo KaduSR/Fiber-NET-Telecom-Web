@@ -1,7 +1,6 @@
-// cspell:disable
-import { AppWindowIcon, Headphones, Menu, X } from "lucide-react";
+import { Headphones, Menu, X } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import { NAV_ITEMS, CONTACT_INFO } from "../../types/constants";
+import { NAV_ITEMS } from "../../types/constants";
 import Button from "../Button";
 import FiberNetLogo from "../FiberNetLogo";
 
@@ -31,18 +30,12 @@ const Navbar: React.FC<NavbarProps> = ({
 
   const handleNavClick = (
     e: React.MouseEvent<HTMLAnchorElement>,
-    href: string
+    href: string,
   ) => {
     e.preventDefault();
 
-    // if (href === "segunda-via") {
-    //   if (onOpenSegundaVia) onOpenSegundaVia();
-    //   setIsOpen(false);
-    //   return;
-    // }
     if (href === "segunda-via") {
-      const phoneClean = CONTACT_INFO.phone.replace(/\D/g, "");
-      window.location.href = `tel:${phoneClean}`;
+      if (onOpenSegundaVia) onOpenSegundaVia();
       setIsOpen(false);
       return;
     }

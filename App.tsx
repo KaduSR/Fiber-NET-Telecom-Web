@@ -6,11 +6,14 @@ import PlanCard from "./src/components/Dashboard/PlanCard";
 import Features from "./src/components/Features";
 import FiberNetTextLogo from "./src/components/FiberNetTextLogo";
 import Footer from "./src/components/Layout/Footer";
-import Hero from "./src/components/Layout/Hero";
+import Hero from "./src/components/Hero";
 import Navbar from "./src/components/Layout/Navbar";
-import SegundaViaModal from "./src/components/Modals/SegundaViaModal";
+import SegundaViaModal from "./src/components/SegundaViaModal";
 import SupportModal from "./src/components/Modals/SupportModal";
 import NewsSection from "./src/components/NewsSection";
+import { SpeedInsights } from "@vercel/speed-insights/react";
+import { updateStatusInBackground } from "./services/statusMonitor";
+
 import { HISTORY_TEXT, PLANS } from "./src/types/constants";
 
 // Lazy load heavier components
@@ -18,13 +21,13 @@ const Ethics = React.lazy(() => import("./src/components/Ethics"));
 const HelpCenter = React.lazy(() => import("./src/components/HelpCenter"));
 const ClientGuide = React.lazy(() => import("./src/components/ClientGuide"));
 const CodeOfEthicsDocument = React.lazy(
-  () => import("./src/components/CodeOfEthicsDocument")
+  () => import("./src/components/CodeOfEthicsDocument"),
 );
 const ServiceStatus = React.lazy(
-  () => import("./src/components/Dashboard/ServiceStatus")
+  () => import("./src/components/ServiceStatus"),
 );
 const LegalCompliance = React.lazy(
-  () => import("./src/components/LegalCompliance")
+  () => import("./src/components/LegalCompliance"),
 );
 
 const App: React.FC = () => {
@@ -32,12 +35,9 @@ const App: React.FC = () => {
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
   const [isSegundaViaModalOpen, setIsSegundaViaModalOpen] = useState(false);
 
-  // === NOVO: SEO e Scroll para o topo sempre que a página mudar ===
   useEffect(() => {
-    // Scroll
     window.scrollTo({ top: 0, behavior: "smooth" });
 
-    // SEO: Título Dinâmico Otimizado (Fibra Óptica + Banda Larga)
     const baseTitle = "Fiber.Net Telecom";
     const titles: Record<string, string> = {
       home: `Internet Fibra Óptica e Banda Larga em Rio das Flores | ${baseTitle}`,
@@ -55,11 +55,21 @@ const App: React.FC = () => {
     document.title = titles[currentPage] || baseTitle;
   }, [currentPage]);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      updateStatusInBackground().catch((err) =>
+        console.error("Falha no monitoramento bg:", err),
+      );
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
   const toggleSupportModal = () => setIsSupportModalOpen(!isSupportModalOpen);
 
   const handleNavigate = (page: string) => {
     setCurrentPage(page);
-    setIsSupportModalOpen(false); // Close modal if navigating from it
+    setIsSupportModalOpen(false);
   };
 
   return (
@@ -74,12 +84,10 @@ const App: React.FC = () => {
       <main className="flex-grow">
         {currentPage === "home" && (
           <>
-            {/* Hero Section */}
             <div id="home">
               <Hero />
             </div>
 
-            {/* History Section */}
             <section
               id="sobre"
               className="py-20 bg-fiber-card border-y border-white/5"
@@ -120,10 +128,8 @@ const App: React.FC = () => {
               </div>
             </section>
 
-            {/* Features / Values Section */}
             <Features />
 
-            {/* Why Choose Us Section */}
             <section className="py-16 bg-fiber-dark">
               <div className="max-w-7xl mx-auto px-4 text-center">
                 <h2 className="text-3xl font-bold text-white">
@@ -210,7 +216,6 @@ const App: React.FC = () => {
               </div>
             </section>
 
-            {/* CTA Strip */}
             <section className="bg-fiber-orange py-16">
               <div className="max-w-4xl mx-auto px-4 text-center">
                 <h3 className="text-3xl font-bold text-white mb-4">
@@ -229,7 +234,6 @@ const App: React.FC = () => {
               </div>
             </section>
 
-            {/* Plans Section */}
             <section id="planos" className="py-24 bg-fiber-dark">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center max-w-3xl mx-auto mb-16">
@@ -254,7 +258,6 @@ const App: React.FC = () => {
 
         {currentPage === "client-area" && <ClientArea />}
 
-        {/* Lazy Loaded Components with Suspense Fallback */}
         <Suspense
           fallback={
             <div className="flex items-center justify-center min-h-[60vh]">
@@ -274,7 +277,13 @@ const App: React.FC = () => {
             <CodeOfEthicsDocument onNavigate={handleNavigate} />
           )}
           {currentPage === "status" && (
-            <ServiceStatus onNavigate={handleNavigate} />
+            <ServiceStatus
+              onNavigate={handleNavigate}
+              isOpen={false}
+              onClose={function (): void {
+                throw new Error("Function not implemented.");
+              }}
+            />
           )}
           {currentPage === "legal" && <LegalCompliance />}
         </Suspense>
@@ -301,7 +310,6 @@ const App: React.FC = () => {
         onClose={() => setIsSegundaViaModalOpen(false)}
       />
 
-      {/* Floating Support Button */}
       <button
         onClick={() => setIsSupportModalOpen(true)}
         className="fixed bottom-6 right-6 z-50 bg-fiber-orange text-white p-4 rounded-full shadow-[0_0_20px_rgba(255,107,0,0.5)] hover:scale-110 hover:shadow-[0_0_30px_rgba(255,107,0,0.8)] transition-all duration-300 group"
@@ -309,10 +317,8 @@ const App: React.FC = () => {
         title="Central de Suporte"
       >
         <Headphones size={32} />
-        {/* Tooltip on Hover */}
         <span className="absolute right-full mr-4 top-1/2 -translate-y-1/2 bg-fiber-card text-white text-xs font-bold py-2 px-3 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none border border-white/10 flex items-center">
           Falar com Suporte
-          {/* Seta do Tooltip */}
           <span className="absolute -right-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-fiber-card border-t border-r border-white/10 transform rotate-45"></span>
         </span>
       </button>
