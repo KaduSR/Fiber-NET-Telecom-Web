@@ -11,6 +11,7 @@ import {
 import React, { useState } from "react";
 import { CONTACT_INFO } from "../types/constants";
 import Button from "./Button";
+import { CONTACT_INFO } from "../types/constants";
 
 interface HelpCenterProps {
   onNavigate?: (page: string) => void;

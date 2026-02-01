@@ -111,17 +111,32 @@ export interface OrdemServico {
   data_abertura: string;
   mensagem: string;
   assunto?: string;
+  assunto_nome?: string;
   data_fechamento?: string;
+  resolucao?: string;
 }
 
 export interface Ticket {
   id: string;
   protocolo: string;
   assunto: string;
+  assunto_nome?: string;
   status: string;
   data_abertura: string;
   mensagem: string;
   prioridade?: string;
+  resolucao?: string;
+}
+
+export interface Termo {
+  id: number;
+  id_contrato: number;
+  id_modelo_termo: number;
+  data_aceite?: string;
+  ip_aceite?: string;
+  status: 'P' | 'A' | 'C';
+  titulo?: string;
+  conteudo?: string;
 }
 
 export interface OntInfo {
@@ -166,6 +181,7 @@ export interface DashboardResponse {
   notas: NotaFiscal[]; 
   ordensServico: OrdemServico[];
   tickets: Ticket[];
+  termos: Termo[];
   ontInfo: OntInfo[];
   consumo: Consumo;
   ai_analysis?: AiAnalysis; 

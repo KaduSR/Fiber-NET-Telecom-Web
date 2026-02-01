@@ -19,29 +19,49 @@ import {
   Lock,
   LogOut,
   Mail,
+  MessageSquare,
+  Plus,
   Power,
   Printer,
   QrCode,
+  QrCodeIcon,
   Router,
   ScrollText,
   Server,
   Settings,
-  ThumbsUp,
   Wifi,
+  Wrench,
   X,
   Zap,
-  MessageSquare,
-  Wrench,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { apiService } from "../../services/apiService";
+import { API_BASE_URL } from "../config";
+
 import { Consumo, DashboardResponse } from "../../types/api";
 import AIInsights from "./AIInsights";
 import Button from "./Button";
+import NewTicketModal from "./Modals/NewTicketModal";
 
 const DASH_CACHE_KEY = "fiber_dashboard_cache_v5_forced";
 
 // === HELPERS ===
+
+interface BoletoView {
+  id: number;
+  documento: string;
+  vencimentoFormatado: string;
+  valorFormatado: string;
+  valor: number;
+  valorRecebido?: number;
+  linhaDigitavel: string | null;
+  pixCopiaECola: string | null;
+  pixImagem?: string | null;
+  boleto_pdf_link: string | null;
+  status: string;
+  diasVencimento: number;
+  clienteNome?: string;
+}
 
 const bytesToGB = (bytes: number) => {
   return parseFloat((bytes / (1024 * 1024 * 1024)).toFixed(2));
@@ -90,6 +110,9 @@ const ConsumptionChart: React.FC<{ history?: Consumo["history"] }> = ({
     }))
     .reverse();
 
+  const totalDownload = data.reduce((acc, curr) => acc + curr.download, 0);
+  const totalUpload = data.reduce((acc, curr) => acc + curr.upload, 0);
+
   if (!history || data.length === 0) {
     return (
       <div className="h-64 flex items-center justify-center text-gray-500 bg-black/20 rounded-xl mt-6">
@@ -100,7 +123,7 @@ const ConsumptionChart: React.FC<{ history?: Consumo["history"] }> = ({
 
   const maxVal = Math.max(
     ...data.map((d: any) => Math.max(d.download, d.upload)),
-    1
+    1,
   );
   const width = 100,
     height = 100,
@@ -120,37 +143,51 @@ const ConsumptionChart: React.FC<{ history?: Consumo["history"] }> = ({
 
   const getAreaPath = (key: "download" | "upload") =>
     `${getPath(key)} L ${getX(data.length - 1)} ${height - padding} L ${getX(
-      0
+      0,
     )} ${height - padding} Z`;
 
   return (
     <div className="bg-black/20 border border-white/5 rounded-2xl p-6 mt-6 relative overflow-hidden">
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
-        <h3 className="text-white font-bold flex items-center gap-2">
-          <Activity size={18} className="text-fiber-orange" /> Histórico de
-          Consumo
-        </h3>
-        <div className="flex bg-white/5 p-1 rounded-full border border-white/10">
-          <button
-            onClick={() => setPeriod("daily")}
-            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-              period === "daily"
-                ? "bg-fiber-orange text-white shadow-lg"
-                : "text-gray-400 hover:text-white"
-            }`}
-          >
-            Diário
-          </button>
-          <button
-            onClick={() => setPeriod("monthly")}
-            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-              period === "monthly"
-                ? "bg-fiber-orange text-white shadow-lg"
-                : "text-gray-400 hover:text-white"
-            }`}
-          >
-            Mensal
-          </button>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="bg-white/5 border border-white/5 p-4 rounded-2xl">
+          <p className="text-[10px] text-gray-500 uppercase font-black mb-1">
+            Total Download
+          </p>
+          <p className="text-2xl font-bold text-white">
+            {totalDownload.toFixed(2)} GB
+          </p>
+        </div>
+        <div className="bg-white/5 border border-white/5 p-4 rounded-2xl">
+          <p className="text-[10px] text-gray-500 uppercase font-black mb-1">
+            Total Upload
+          </p>
+          <p className="text-2xl font-bold text-white">
+            {totalUpload.toFixed(2)} GB
+          </p>
+        </div>
+        <div className="flex items-center justify-end">
+          <div className="flex bg-white/5 p-1 rounded-full border border-white/10">
+            <button
+              onClick={() => setPeriod("daily")}
+              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
+                period === "daily"
+                  ? "bg-fiber-orange text-white shadow-lg"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              Diário
+            </button>
+            <button
+              onClick={() => setPeriod("monthly")}
+              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
+                period === "monthly"
+                  ? "bg-fiber-orange text-white shadow-lg"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              Mensal
+            </button>
+          </div>
         </div>
       </div>
       <div className="h-64 w-full relative group">
@@ -279,7 +316,7 @@ const ClientArea: React.FC = () => {
       } catch (e) {
         return null;
       }
-    }
+    },
   );
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
@@ -300,9 +337,14 @@ const ClientArea: React.FC = () => {
   const [showLoginPass, setShowLoginPass] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isPixModalOpen, setPixModalOpen] = useState(false);
+  const [isNewTicketModalOpen, setNewTicketModalOpen] = useState(false);
+  const [isSigning, setIsSigning] = useState(false);
+  const [downloadingContractId, setDownloadingContractId] = useState<
+    number | null
+  >(null);
   const [activePixCode, setActivePixCode] = useState("");
-  const [pixImage, setPixImage] = useState<string | null>(null); // <--- NOVO
-  const [loadingPix, setLoadingPix] = useState(false); // <--- NOVO
+  const [activePixImage, setActivePixImage] = useState("");
+  const [loadingPixId, setLoadingPixId] = useState<number | null>(null);
   const [isPixCopied, setIsPixCopied] = useState(false);
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState("aberto");
   const [copiedInvoiceId, setCopiedInvoiceId] = useState<number | null>(null); // <--- NOVO
@@ -405,7 +447,7 @@ const ClientArea: React.FC = () => {
 
   const performLoginAction = async (
     loginId: string | number,
-    action: "limpar-mac" | "desconectar" | "diagnostico"
+    action: "limpar-mac" | "desconectar" | "diagnostico",
   ) => {
     const id = Number(loginId);
     setActionStatus((prev) => ({
@@ -434,8 +476,24 @@ const ClientArea: React.FC = () => {
             ...prev,
             [loginId]: { status: "idle" as const },
           })),
-        3000
+        3000,
       );
+    }
+  };
+
+  const handleSignContract = async (idTermo: number) => {
+    if (!window.confirm("Você confirma a assinatura digital deste contrato?"))
+      return;
+
+    setIsSigning(true);
+    try {
+      await apiService.assinarContrato(idTermo);
+      alert("Contrato assinado com sucesso!");
+      fetchDashboardData();
+    } catch (err: any) {
+      alert(err.message || "Erro ao assinar contrato.");
+    } finally {
+      setIsSigning(false);
     }
   };
 
@@ -460,7 +518,7 @@ const ClientArea: React.FC = () => {
     try {
       const formData = new FormData(e.currentTarget);
       const data = await apiService.recoverPassword(
-        formData.get("recoveryEmail") as string
+        formData.get("recoveryEmail") as string,
       );
       setRecoveryStatus("success");
       setRecoveryMessage(data.message);
@@ -533,14 +591,14 @@ const ClientArea: React.FC = () => {
   };
 
   useEffect(() => {
-    const saved = localStorage.getItem("fiber_saved_email");
-    if (saved) {
-      setEmailInput(saved);
-      setRememberMe(true);
-    }
-    if (isAuthenticated) {
-      fetchDashboardData();
-    }
+    const handleAuthChange = () => {
+      const token = localStorage.getItem("authToken");
+      setIsAuthenticated(!!token);
+      if (!token) setDashboardData(null); // Limpa dados antigos
+    };
+
+    window.addEventListener("auth-change", handleAuthChange);
+    return () => window.removeEventListener("auth-change", handleAuthChange);
   }, []);
 
   // useEffect(() => {
@@ -549,39 +607,96 @@ const ClientArea: React.FC = () => {
   //   }
   // }, [chatMessages, activeTab]);
 
+  const abrirModalPixInterface = (codigo: string, image?: string) => {
+    if (!codigo) {
+      alert("Erro: Código PIX vazio.");
+      return;
+    }
+
+    setActivePixCode(codigo);
+    setActivePixImage(image || "");
+    setPixModalOpen(true);
+    setIsPixCopied(false);
+  };
+
   const handleCopy = (text: string, id: number) => {
     navigator.clipboard.writeText(text);
     setCopiedInvoiceId(id);
     setTimeout(() => setCopiedInvoiceId(null), 2000);
   };
 
-  const handleOpenPixModal = async (faturaId: number) => {
-    setPixModalOpen(true);
-    setLoadingPix(true);
-    setActivePixCode("");
-    setPixImage(null);
-    setIsPixCopied(false);
+  const handleOpenPixModal = async (boleto: BoletoView) => {
+    // 1. Se já tem o código, abre direto
+    if (boleto.pixCopiaECola) {
+      abrirModalPixInterface(
+        boleto.pixCopiaECola,
+        boleto.pixImagem || undefined,
+      );
+      return;
+    }
 
+    // 2. Se não tem, busca no backend
     try {
-      const data = await apiService.getPixCode(faturaId);
-      setActivePixCode(data.qrcode);
-    } catch (error) {
-      console.error("Erro ao obter código PIX:", error);
-      setActivePixCode("Erro ao obter código PIX.");
+      setLoadingPixId(boleto.id);
+      // Ajuste na rota para usar o endpoint correto do seu backend
+      const response = await fetch(`${API_BASE_URL}/boletos/${boleto.id}/pix`);
+      const data = await response.json();
+
+      // Verifica se retornou sucesso E o código pix
+      if (
+        (data.success || data.type === "success") &&
+        (data.pixCopiaECola || data.pix?.qrCode?.qrcode)
+      ) {
+        const code = data.pixCopiaECola || data.pix?.qrCode?.qrcode;
+        const img = data.pixImagem || data.pix?.qrCode?.imagemQrcode;
+
+        // Atualiza localmente
+        boleto.pixCopiaECola = code;
+        boleto.pixImagem = img;
+        abrirModalPixInterface(code, img);
+      } else {
+        alert(
+          "O sistema financeiro ainda não gerou o QR Code para esta fatura.",
+        );
+      }
+    } catch (e) {
+      console.error("Erro Pix:", e);
+      alert("Erro ao conectar servidor para gerar Pix.");
     } finally {
-      setLoadingPix(false);
+      setLoadingPixId(null);
     }
   };
+
   const handleCopyPix = () => {
     navigator.clipboard.writeText(activePixCode);
     setIsPixCopied(true);
     setTimeout(() => setIsPixCopied(false), 2000);
   };
 
+  const handleDownloadContrato = async (id: number) => {
+    setDownloadingContractId(id);
+    try {
+      const data = await apiService.getContratoPdf(id);
+      if (data && data.base64_document) {
+        downloadBase64Pdf(data.base64_document, `contrato-${id}.pdf`);
+      } else {
+        alert("Não foi possível gerar o arquivo PDF deste contrato.");
+      }
+    } catch (error) {
+      console.error("Erro ao baixar contrato:", error);
+      alert("Error ao baixar o contrato. Tente novamente mais tarde.");
+    } finally {
+      setDownloadingContractId(null);
+    }
+  };
+
+  const faturasAbertas =
+    dashboardData?.faturas.filter((f) => f.status === "A").length || 0;
+
   const TABS = [
     { id: "dashboard", label: "Visão Geral", icon: LayoutDashboard },
     // { id: "ai_support", label: "Suporte IA", icon: Bot, badge: "NOVO" },
-    { id: "invoices", label: "Faturas", icon: FileText },
+    { id: "invoices", label: "Faturas", icon: FileText, badge: faturasAbertas },
     { id: "tickets", label: "Suporte", icon: MessageSquare },
     { id: "service_orders", label: "Ordens de Serviço", icon: Wrench },
     { id: "connections", label: "Conexões", icon: Wifi },
@@ -814,11 +929,11 @@ const ClientArea: React.FC = () => {
                   <div className="flex items-center gap-3">
                     <tab.icon size={18} /> {tab.label}
                   </div>
-                  {/* {tab.badge && (
+                  {tab.badge && (
                     <span className="bg-white text-fiber-orange text-[10px] font-bold px-1.5 py-0.5 rounded">
                       {tab.badge}
                     </span>
-                  )} */}
+                  )}
                 </button>
               ))}
             </div>
@@ -862,7 +977,7 @@ const ClientArea: React.FC = () => {
                         <span className="text-3xl font-bold text-white">
                           {
                             dashboardData.contratos.filter(
-                              (c) => c.status === "A"
+                              (c) => c.status === "A",
                             ).length
                           }
                         </span>
@@ -895,7 +1010,7 @@ const ClientArea: React.FC = () => {
                         <span className="text-3xl font-bold text-white">
                           {
                             dashboardData.faturas.filter(
-                              (f) => f.status === "A"
+                              (f) => f.status === "A",
                             ).length
                           }
                         </span>
@@ -913,7 +1028,9 @@ const ClientArea: React.FC = () => {
                           {dashboardData.faturas
                             .filter((f) => f.status === "A")
                             .sort((a, b) =>
-                              a.data_vencimento.localeCompare(b.data_vencimento)
+                              a.data_vencimento.localeCompare(
+                                b.data_vencimento,
+                              ),
                             )[0]
                             ?.data_vencimento.split("-")
                             .reverse()
@@ -998,7 +1115,7 @@ const ClientArea: React.FC = () => {
                           .filter((f) => f.status === "A")
                           // ORDENAÇÃO CRONOLÓGICA (Antigo -> Novo)
                           .sort((a, b) =>
-                            a.data_vencimento.localeCompare(b.data_vencimento)
+                            a.data_vencimento.localeCompare(b.data_vencimento),
                           )
                           .map((fatura) => {
                             // --- LÓGICA DE CÁLCULO ---
@@ -1009,14 +1126,14 @@ const ClientArea: React.FC = () => {
 
                             const estimativa = calcularEstimativa(
                               valorNum,
-                              fatura.data_vencimento
+                              fatura.data_vencimento,
                             );
 
                             const hoje = new Date();
                             hoje.setHours(0, 0, 0, 0);
 
                             const dataSegura = fatura.data_vencimento.includes(
-                              "T"
+                              "T",
                             )
                               ? fatura.data_vencimento
                               : fatura.data_vencimento + "T12:00:00";
@@ -1026,7 +1143,7 @@ const ClientArea: React.FC = () => {
 
                             const diffTime = venc.getTime() - hoje.getTime();
                             const dias = Math.ceil(
-                              diffTime / (1000 * 60 * 60 * 24)
+                              diffTime / (1000 * 60 * 60 * 24),
                             );
 
                             // --- RENDERIZAÇÃO DO CARD ---
@@ -1110,18 +1227,29 @@ const ClientArea: React.FC = () => {
                                 <div className="flex md:flex-col lg:flex-row gap-2 w-full md:w-auto">
                                   <button
                                     onClick={() =>
-                                      handleOpenPixModal(fatura.id)
-                                    } // Passa ID, não string
+                                      handleOpenPixModal(
+                                        fatura as unknown as BoletoView,
+                                      )
+                                    }
+                                    disabled={loadingPixId === fatura.id}
                                     className="flex-1 flex items-center justify-center gap-2 bg-fiber-green text-white px-4 py-2.5 rounded-xl font-bold text-xs hover:bg-green-600 transition shadow-lg shadow-green-900/20"
                                   >
-                                    <QrCode size={16} /> PIX
+                                    {loadingPixId === fatura.id ? (
+                                      <Loader2
+                                        size={14}
+                                        className="animate-spin"
+                                      />
+                                    ) : (
+                                      <QrCode size={16} />
+                                    )}
+                                    Pagar com PIX
                                   </button>
 
                                   <button
                                     onClick={() =>
                                       handleCopy(
                                         fatura.linha_digitavel || "",
-                                        fatura.id
+                                        fatura.id,
                                       )
                                     }
                                     className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition border ${
@@ -1195,23 +1323,23 @@ const ClientArea: React.FC = () => {
                       .filter(
                         (inv) =>
                           (inv.status === "A" ? "aberto" : "pago") ===
-                          invoiceStatusFilter
+                          invoiceStatusFilter,
                       )
                       .sort((a, b) => {
                         if (invoiceStatusFilter === "aberto") {
                           return a.data_vencimento.localeCompare(
-                            b.data_vencimento
+                            b.data_vencimento,
                           );
                         } else {
                           return b.data_vencimento.localeCompare(
-                            a.data_vencimento
+                            a.data_vencimento,
                           );
                         }
                       })
                       .map((invoice) => {
                         // Cálculos de valor para exibição segura
                         const valOriginal = parseFloat(
-                          String(invoice.valor).replace(",", ".")
+                          String(invoice.valor).replace(",", "."),
                         );
                         const rawRecebido = (invoice as any).valor_recebido;
                         const valRecebido = rawRecebido
@@ -1281,7 +1409,9 @@ const ClientArea: React.FC = () => {
                                     variant="primary"
                                     // CORREÇÃO: Passando invoice.id (number) ao invés de string
                                     onClick={() =>
-                                      handleOpenPixModal(invoice.id)
+                                      handleOpenPixModal(
+                                        invoice as unknown as BoletoView,
+                                      )
                                     }
                                     className="!py-2 !px-4 !text-xs gap-2 !rounded-xl"
                                   >
@@ -1292,7 +1422,7 @@ const ClientArea: React.FC = () => {
                                     onClick={() =>
                                       handleCopy(
                                         invoice.linha_digitavel!,
-                                        invoice.id
+                                        invoice.id,
                                       )
                                     }
                                     className={`p-3 rounded-xl transition-colors border ${
@@ -1326,7 +1456,7 @@ const ClientArea: React.FC = () => {
                       dashboardData.faturas.filter(
                         (inv) =>
                           (inv.status === "A" ? "aberto" : "pago") ===
-                          invoiceStatusFilter
+                          invoiceStatusFilter,
                       ).length === 0 && (
                         <div className="text-center py-20 bg-neutral-900/50 rounded-3xl border border-dashed border-white/10">
                           <p className="text-gray-500 font-medium">
@@ -1340,9 +1470,20 @@ const ClientArea: React.FC = () => {
 
               {activeTab === "tickets" && (
                 <div>
-                  <h2 className="text-2xl font-bold text-white mb-6">
-                    Suporte e Atendimento
-                  </h2>
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold text-white">
+                      Suporte e Atendimento
+                    </h2>
+                    <Button
+                      variant="primary"
+                      className="!py-2 !px-4 !text-xs gap-2 !rounded-xl"
+                      onClick={() =>
+                        alert("Funcionalidade de criação de ticket em breve!")
+                      }
+                    >
+                      <Plus size={16} /> Novo Atendimento
+                    </Button>
+                  </div>
                   <div className="space-y-4">
                     {(dashboardData?.tickets || []).length > 0 ? (
                       dashboardData?.tickets.map((ticket) => (
@@ -1354,16 +1495,30 @@ const ClientArea: React.FC = () => {
                             <div className="w-12 h-12 rounded-xl bg-fiber-blue/10 text-fiber-blue flex items-center justify-center">
                               <MessageSquare size={24} />
                             </div>
-                            <div>
+                            <div className="flex-1">
                               <p className="font-bold text-lg text-white">
-                                {ticket.assunto}
+                                {ticket.assunto_nome || ticket.assunto}
                               </p>
                               <p className="text-xs text-gray-500 uppercase font-black mt-1">
                                 Protocolo: {ticket.protocolo} | Aberto em:{" "}
                                 {ticket.data_abertura
-                                  ? ticket.data_abertura.split(" ")[0].split("-").reverse().join("/")
+                                  ? ticket.data_abertura
+                                      .split(" ")[0]
+                                      .split("-")
+                                      .reverse()
+                                      .join("/")
                                   : "N/A"}
                               </p>
+                              {ticket.resolucao && (
+                                <div className="mt-3 p-3 bg-black/20 rounded-lg border border-white/5">
+                                  <p className="text-[10px] text-fiber-blue uppercase font-black mb-1">
+                                    Resolução/Mensagem:
+                                  </p>
+                                  <p className="text-sm text-gray-300 italic">
+                                    "{ticket.resolucao}"
+                                  </p>
+                                </div>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-3 w-full md:w-auto">
@@ -1374,7 +1529,9 @@ const ClientArea: React.FC = () => {
                                   : "bg-fiber-orange/20 text-fiber-orange border-fiber-orange/30"
                               }`}
                             >
-                              {ticket.status === "F" ? "Finalizado" : "Em Aberto"}
+                              {ticket.status === "F"
+                                ? "Finalizado"
+                                : "Em Aberto"}
                             </span>
                           </div>
                         </div>
@@ -1406,16 +1563,32 @@ const ClientArea: React.FC = () => {
                             <div className="w-12 h-12 rounded-xl bg-fiber-orange/10 text-fiber-orange flex items-center justify-center">
                               <Wrench size={24} />
                             </div>
-                            <div>
+                            <div className="flex-1">
                               <p className="font-bold text-lg text-white">
-                                {os.assunto || "Manutenção/Instalação"}
+                                {os.assunto_nome ||
+                                  os.assunto ||
+                                  "Manutenção/Instalação"}
                               </p>
                               <p className="text-xs text-gray-500 uppercase font-black mt-1">
                                 Protocolo: {os.protocolo} | Data:{" "}
                                 {os.data_abertura
-                                  ? os.data_abertura.split(" ")[0].split("-").reverse().join("/")
+                                  ? os.data_abertura
+                                      .split(" ")[0]
+                                      .split("-")
+                                      .reverse()
+                                      .join("/")
                                   : "N/A"}
                               </p>
+                              {os.resolucao && (
+                                <div className="mt-3 p-3 bg-black/20 rounded-lg border border-white/5">
+                                  <p className="text-[10px] text-fiber-orange uppercase font-black mb-1">
+                                    Resolução/Conclusão:
+                                  </p>
+                                  <p className="text-sm text-gray-300 italic">
+                                    "{os.resolucao}"
+                                  </p>
+                                </div>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-3 w-full md:w-auto">
@@ -1453,64 +1626,122 @@ const ClientArea: React.FC = () => {
 
               {activeTab === "contracts" && dashboardData && (
                 <div className="space-y-8">
-                  <div className="bg-white text-gray-800 rounded-lg overflow-hidden shadow-lg font-sans">
-                    <div className="bg-nubank-primary p-6 flex justify-between items-center text-white">
-                      <div className="flex items-center gap-4">
-                        <FileText size={40} className="opacity-80" />
-                        <div>
-                          <h2 className="text-2xl font-bold">Contratos</h2>
-                          <p className="text-purple-200 text-sm">
-                            Gerencie seus contratos.
-                          </p>
-                        </div>
+                  {/* Termos Pendentes de Assinatura */}
+                  {(dashboardData.termos || []).filter((t) => t.status === "P")
+                    .length > 0 && (
+                    <div className="bg-fiber-orange/10 border border-fiber-orange/20 rounded-2xl p-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <AlertCircle className="text-fiber-orange" size={24} />
+                        <h3 className="text-xl font-bold text-white">
+                          Assinatura Pendente
+                        </h3>
+                      </div>
+                      <p className="text-gray-400 text-sm mb-6">
+                        Você possui contratos aguardando sua assinatura digital.
+                        Assine agora para evitar interrupções no serviço.
+                      </p>
+                      <div className="space-y-3">
+                        {dashboardData.termos
+                          .filter((t) => t.status === "P")
+                          .map((termo) => (
+                            <div
+                              key={termo.id}
+                              className="bg-neutral-900 border border-white/5 rounded-xl p-4 flex justify-between items-center"
+                            >
+                              <span className="text-white font-medium">
+                                {termo.titulo || `Termo de Adesão #${termo.id}`}
+                              </span>
+                              <Button
+                                variant="primary"
+                                className="!py-2 !px-4 !text-xs"
+                                onClick={() => handleSignContract(termo.id)}
+                                disabled={isSigning}
+                              >
+                                {isSigning ? (
+                                  <Loader2 size={14} className="animate-spin" />
+                                ) : (
+                                  "Assinar Digitalmente"
+                                )}
+                              </Button>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Listagem de Contratos */}
+                  <div className="bg-neutral-900 border border-white/10 rounded-2xl overflow-hidden">
+                    <div className="p-6 border-b border-white/5 flex justify-between items-center">
+                      <div>
+                        <h2 className="text-2xl font-bold text-white">
+                          Meus Contratos
+                        </h2>
+                        <p className="text-gray-500 text-sm">
+                          Gestão de planos e serviços
+                        </p>
                       </div>
                       <div className="text-right">
-                        <div className="text-3xl font-bold">
+                        <div className="text-2xl font-bold text-fiber-green">
                           {
                             dashboardData.contratos.filter(
-                              (c) => c.status === "A"
+                              (c) => c.status === "A",
                             ).length
                           }
                         </div>
-                        <div className="text-xs text-purple-200 uppercase tracking-wider">
-                          contratos ativos
+                        <div className="text-[10px] text-gray-500 uppercase font-black">
+                          Ativos
                         </div>
                       </div>
                     </div>
-                    {dashboardData.contratos.map((contrato) => (
-                      <div
-                        key={contrato.id}
-                        className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border-b border-gray-100 items-center hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="flex justify-center md:justify-start">
-                          <div
-                            className={`w-8 h-8 rounded flex items-center justify-center ${
-                              contrato.status === "A"
-                                ? "bg-green-500 text-white"
-                                : "bg-red-500 text-white"
-                            }`}
-                          >
-                            <ThumbsUp size={16} fill="currentColor" />
+
+                    <div className="divide-y divide-white/5">
+                      {dashboardData.contratos.map((contrato) => (
+                        <div
+                          key={contrato.id}
+                          className="p-6 flex flex-col md:flex-row justify-between items-center gap-4 hover:bg-white/5 transition-colors"
+                        >
+                          <div className="flex items-center gap-4 w-full md:w-auto">
+                            <div
+                              className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                contrato.status === "A"
+                                  ? "bg-fiber-green/10 text-fiber-green"
+                                  : "bg-red-500/10 text-red-500"
+                              }`}
+                            >
+                              <FileSignature size={20} />
+                            </div>
+                            <div>
+                              <p className="font-bold text-white">
+                                {contrato.descricao_aux_plano_venda ||
+                                  "Plano de Internet"}
+                              </p>
+                              <p className="text-xs text-gray-500 uppercase font-black">
+                                ID: {contrato.id} | Status:{" "}
+                                {contrato.status === "A" ? "Ativo" : "Inativo"}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3 w-full md:w-auto">
+                            <Button
+                              variant="outline"
+                              className="!py-2 !px-4 !text-xs gap-2"
+                              onClick={() =>
+                                handleDownloadContrato(contrato.id)
+                              }
+                              disabled={downloadingContractId === contrato.id}
+                            >
+                              {downloadingContractId === contrato.id ? (
+                                <Loader2 size={14} className="animate-spin" />
+                              ) : (
+                                <Printer size={14} />
+                              )}
+                              Imprimir Contrato
+                            </Button>
                           </div>
                         </div>
-                        <div className="md:col-span-2 font-medium text-gray-700">
-                          {contrato.descricao_aux_plano_venda || "Plano Padrão"}
-                        </div>
-                        <div className="flex justify-center gap-3 text-gray-400">
-                          <button
-                            onClick={() =>
-                              contrato.pdf_link &&
-                              window.open(contrato.pdf_link, "_blank")
-                            }
-                            className="hover:text-gray-600 transition-colors"
-                            title="Imprimir Contrato"
-                            disabled={!contrato.pdf_link}
-                          >
-                            <Printer size={18} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
@@ -1737,8 +1968,18 @@ const ClientArea: React.FC = () => {
         </div>
       </div>
 
+      <NewTicketModal
+        isOpen={isNewTicketModalOpen}
+        onClose={() => setNewTicketModalOpen(false)}
+        onSuccess={() => {
+          alert("Atendimento criado com sucesso!");
+          fetchDashboardData();
+        }}
+        clientId={dashboardData?.clientes[0]?.id || 0}
+      />
+
       {isPixModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center px-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-fiber-card border border-white/10 rounded-2xl p-6 max-w-md w-full relative">
             <button
               onClick={() => setPixModalOpen(false)}
@@ -1747,45 +1988,52 @@ const ClientArea: React.FC = () => {
               <X size={20} />
             </button>
             <h3 className="text-xl font-bold text-white text-center mb-4">
-              Pagamento PIX
+              Pagamento via PIX
             </h3>
-            <div className="bg-white p-4 rounded-lg mx-auto w-fit mb-4 min-h-[200px] flex items-center justify-center">
-              {loadingPix ? (
-                <div className="flex flex-col items-center gap-2">
-                  <Loader2
-                    size={40}
-                    className="text-neutral-900 animate-spin"
-                  />
-                  <p className="text-neutral-500 text-xs font-bold">
-                    Gerando QR Code...
-                  </p>
-                </div>
-              ) : pixImage ? (
+
+            <div className="bg-white p-4 rounded-lg mx-auto w-fit mb-4 min-h-[232px] flex items-center justify-center">
+              {activePixImage && activePixImage.length > 50 ? (
+                // Se tiver imagem base64 válida vinda do backend
                 <img
-                  src={`data:image/png;base64,${pixImage}`}
-                  alt="QR Code PIX"
-                  className="w-48 h-48 object-contain"
+                  src={
+                    activePixImage.startsWith("data:image")
+                      ? activePixImage
+                      : `data:image/png;base64,${activePixImage}`
+                  }
+                  alt="QR Code Pix"
+                  className="w-[200px] h-[200px] object-contain"
                 />
+              ) : activePixCode ? (
+                // Se não tiver imagem, gera na hora usando a lib
+                <QrCode values={activePixCode} size={200} />
               ) : (
-                <div className="flex flex-col items-center gap-2 text-neutral-400">
-                  <QrCode size={64} />
-                  <p className="text-xs text-center max-w-[150px]">
-                    QR Code visual indisponível. Use o Copia e Cola abaixo.
-                  </p>
-                </div>
+                <QrCodeIcon
+                  size={200}
+                  className="text-neutral-900 opacity-20"
+                />
               )}
             </div>
-            <div className="bg-neutral-900 p-2 rounded mb-4 overflow-hidden">
-              <p className="text-xs text-gray-500 font-mono truncate">
+
+            <div className="bg-neutral-900 p-3 rounded-lg mb-4 max-h-24 overflow-y-auto custom-scrollbar">
+              <p className="text-xs text-gray-400 font-mono break-all">
                 {activePixCode}
               </p>
             </div>
+
             <Button
               onClick={handleCopyPix}
               fullWidth
               className="gap-2 !bg-fiber-green hover:!bg-green-600"
             >
-              {isPixCopied ? "Copiado!" : "Copiar Código"}
+              {isPixCopied ? (
+                <>
+                  <CheckCircle size={18} /> Copiado!
+                </>
+              ) : (
+                <>
+                  <Copy size={18} /> Copiar Pix Copia e Cola
+                </>
+              )}
             </Button>
           </div>
         </div>
