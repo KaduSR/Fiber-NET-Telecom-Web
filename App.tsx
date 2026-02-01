@@ -1,18 +1,17 @@
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { Headphones, Loader2 } from "lucide-react";
 import React, { Suspense, useEffect, useState } from "react";
-import { SpeedInsights } from "@vercel/speed-insights/react";
-import ClientArea from "./src/components/Dashboard/ClientArea";
-import PlanCard from "./src/components/Dashboard/PlanCard";
+import { updateStatusInBackground } from "./services/statusMonitor";
+import ClientArea from "./src/components/ClientArea";
 import Features from "./src/components/Features";
 import FiberNetTextLogo from "./src/components/FiberNetTextLogo";
-import Footer from "./src/components/Layout/Footer";
 import Hero from "./src/components/Hero";
+import Footer from "./src/components/Layout/Footer";
 import Navbar from "./src/components/Layout/Navbar";
-import SegundaViaModal from "./src/components/SegundaViaModal";
 import SupportModal from "./src/components/Modals/SupportModal";
 import NewsSection from "./src/components/NewsSection";
-import { SpeedInsights } from "@vercel/speed-insights/react";
-import { updateStatusInBackground } from "./services/statusMonitor";
+import PlanCard from "./src/components/PlanCard";
+import SegundaViaModal from "./src/components/SegundaViaModal";
 
 import { HISTORY_TEXT, PLANS } from "./src/types/constants";
 
