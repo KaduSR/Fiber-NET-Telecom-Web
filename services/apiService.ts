@@ -254,7 +254,7 @@ class ApiService {
   ): Promise<{ base64_document: string }> {
      
     // Ajustado para POST conforme padrão IXC
-    return this.request<{ base64_document: string }>(`/contratos/${id}/imprimir`, {
+    return this.request<{ base64_document: string }>(`/cliente_contrato_imprimir_contrato_${id}`, {
       method: "POST",
       body: JSON.stringify({ id }),
     });
