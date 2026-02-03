@@ -253,7 +253,7 @@ class ApiService {
     id: number
   ): Promise<{ base64_document: string }> {
      
-    return this.request<{ base64_document: string }>(`/contratos/${id}/pdf`, {
+    return this.request<{ base64_document: string }>(`/contratos/${id}/imprimir`, {
       method: "GET",
     });
   }
