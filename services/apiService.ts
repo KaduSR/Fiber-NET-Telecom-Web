@@ -267,7 +267,7 @@ class ApiService {
   }
 
   async getContratoPdf(id: number): Promise<{ base64_document: string }> {
-    const url = `/api/contratos/${id}/pdf`;
+    const url = `/contratos/${id}/pdf`;
     return this.request<{ base64_document: string }>(url, {
       method: "GET",
     });
