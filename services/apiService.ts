@@ -28,7 +28,7 @@ class ApiService {
     const url = `${cleanBase}${cleanEndpoint}`;
 
     try {
-      // console.log(`[Frontend] Requesting: ${url}`);
+      console.log(`[Frontend] Requesting: ${url}`);
       const response = await fetch(url, {
         ...options,
         headers: {
@@ -267,7 +267,7 @@ class ApiService {
   }
 
   async getContratoPdf(id: number): Promise<{ base64_document: string }> {
-    return this.request<{ base64_document: string }>(`/contratos/${id}/pdf`, {
+    return this.request<{ base64_document: string }>(`/api/contratos/${id}/pdf`, {
       method: "GET",
     });
   }
