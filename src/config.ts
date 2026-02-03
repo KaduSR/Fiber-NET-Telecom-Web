@@ -6,8 +6,8 @@ export const getApiBaseUrl = () => {
     return "/api-proxy/api";
   }
 
-  // return "https://api.centralfiber.online/api";
-  return "http://localhost:3001/api";
+  return "https://api.centralfiber.online/api";
+  // return "http://localhost:3001/api";
 };
 
 export const API_BASE_URL = getApiBaseUrl();

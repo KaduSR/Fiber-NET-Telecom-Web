@@ -249,6 +249,15 @@ class ApiService {
     return this.request<any>(url, { method: "POST" });
   }
 
+   async getContratoPdf(
+    id: number
+  ): Promise<{ base64_document: string }> {
+     
+    return this.request<{ base64_document: string }>(`/contratos/${id}/pdf`, {
+      method: "GET",
+    });
+  }
+
   async createTicket(payload: {
     id_cliente: string;
     titulo: string;
@@ -266,12 +275,12 @@ class ApiService {
     });
   }
 
-  async getContratoPdf(id: number): Promise<{ base64_document: string }> {
-    const url = `/contratos/${id}/pdf`;
-    return this.request<{ base64_document: string }>(url, {
-      method: "GET",
-    });
-  }
+  // async getContratoPdf(id: number): Promise<{ base64_document: string }> {
+  //   const url = `/contratos/${id}/pdf`;
+  //   return this.request<{ base64_document: string }>(url, {
+  //     method: "GET",
+  //   });
+  // }
 
   async recoverPassword(email: string): Promise<{ message: string }> {
     return this.request<{ message: string }>(ENDPOINTS.RECOVERY, {

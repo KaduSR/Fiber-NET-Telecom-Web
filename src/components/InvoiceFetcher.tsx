@@ -8,11 +8,11 @@ const InvoiceFetcher: React.FC = () => {
   const [cpf, setCpf] = useState("");
   const [loading, setLoading] = useState(false);
   const [invoices, setInvoices] = useState<Invoice[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   const [loadingPdfId, setLoadingPdfId] = useState<string | number | null>(
     null
   );
-  const [activePixCode, setActivePixCode] = useState<string | null>(null);
+  const [activePixCode] = useState<string | null>(null);
 
   const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/\D/g, "");
