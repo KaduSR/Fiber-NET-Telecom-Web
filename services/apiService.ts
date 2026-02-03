@@ -253,8 +253,10 @@ class ApiService {
     id: number
   ): Promise<{ base64_document: string }> {
      
+    // Ajustado para POST conforme padrão IXC
     return this.request<{ base64_document: string }>(`/contratos/${id}/imprimir`, {
-      method: "GET",
+      method: "POST",
+      body: JSON.stringify({ id }),
     });
   }
 
