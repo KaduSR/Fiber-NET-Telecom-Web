@@ -1,5 +1,3 @@
-// src/services/apiService.ts
-// cspell: disable
 import { API_BASE_URL, ENDPOINTS } from "../config";
 import { DashboardResponse, LoginResponse } from "../types/api";
 
@@ -248,17 +246,13 @@ class ApiService {
         : `/logins/${loginId}/${action}`;
     return this.request<any>(url, { method: "POST" });
   }
-
-   async getContratoPdf(
-    id: number
-  ): Promise<{ base64_document: string }> {
-     
-    // Ajustado para POST conforme padrão IXC
-    return this.request<{ base64_document: string }>(`/cliente_contrato_imprimir_contrato_${id}`, {
-      method: "POST",
-      body: JSON.stringify({ id }),
-    });
-  }
+async getContratoPdf(id: number): Promise<{base64_document: string}>{
+  const url = `/contratos/${id}/pdf`;
+  return this.request<{base64_document: string}>(url, {
+    method: "POST",
+    body: JSON.stringify({id}),
+  });
+}
 
   async createTicket(payload: {
     id_cliente: string;
