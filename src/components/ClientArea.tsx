@@ -39,6 +39,7 @@ import { apiService } from "../../services/apiService";
 import { API_BASE_URL } from "../config";
 
 import { Consumo, DashboardResponse } from "../../types/api";
+import { handlePdfBase64 } from "../../utils/pdfHelpers";
 import AIInsights from "./AIInsights";
 import Button from "./Button";
 import NewTicketModal from "./Modals/NewTicketModal";
@@ -677,14 +678,10 @@ const ClientArea: React.FC = () => {
     setDownloadingContractId(id);
     try {
       const data = await apiService.getContratoPdf(id);
-      if (data && data.base64_document) {
-        downloadBase64Pdf(data.base64_document, `contrato-${id}.pdf`);
-      } else {
-        alert("Não foi possível gerar o arquivo PDF deste contrato.");
-      }
+      handlePdfBase64 (data.base64_document, `contrato-fiber-${id}.pdf`, 'view');
     } catch (error) {
       console.error("Erro ao baixar contrato:", error);
-      alert("Error ao baixar o contrato. Tente novamente mais tarde.");
+      alert("Erro ao baixar o contrato. Tente novamente mais tarde.");
     } finally {
       setDownloadingContractId(null);
     }
