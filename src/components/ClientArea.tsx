@@ -19,20 +19,23 @@ import {
   Lock,
   LogOut,
   Mail,
+  MapPin,
   MessageSquare,
   Plus,
   Power,
   Printer,
   QrCode,
   QrCodeIcon,
+  RefreshCw,
   Router,
   ScrollText,
   Server,
   Settings,
+  Signal,
+  Unlock,
   Wifi,
   Wrench,
-  X,
-  Zap,
+  X
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { apiService } from "../../services/apiService";
@@ -360,7 +363,7 @@ const ClientArea: React.FC = () => {
       message?: string;
     };
   }>({});
-  const [diagResults, setDiagResults] = useState<
+  const [, setDiagResults] = useState<
     Record<
       number,
       {
@@ -369,6 +372,12 @@ const ClientArea: React.FC = () => {
       } | null
     >
   >({});
+
+  const [unlockingId, setUnlockingId] = useState<number | null>(null);
+  const [selectedContractId, setSelectedContractId] = useState<number | null>(
+    null,
+  );
+  const [diagnosticData, setDiagnosticData] = useState<Record<number, any>>({});
 
   const [loginView, setLoginView] = useState<"login" | "forgot">("login");
   const [rememberMe, setRememberMe] = useState(false);
@@ -444,6 +453,60 @@ const ClientArea: React.FC = () => {
     setIsAuthenticated(false);
     setDashboardData(null);
     setLoginView("login");
+  };
+
+  const handleUnlockContract = async (idContrato: number) => {
+    if (
+      !window.confirm(
+        "Deseja utilizar o Desbloqueio de Confiança? Sua internet será liberada temporariamente.",
+      )
+    )
+      return;
+
+    setUnlockingId(idContrato);
+    try {
+      const response = await apiService.unlockContract(idContrato);
+      alert(
+        response.message ||
+          "Desbloqueio realizado com sucesso! Aguarde alguns minutos e reinicie seu roteador.",
+      );
+      fetchDashboardData(); // Atualiza status
+    } catch (error: any) {
+      alert(error.message || "Não foi possível realizar o desbloqueio.");
+    } finally {
+      setUnlockingId(null);
+    }
+  };
+
+  const handleAdvancedDiagnostic = async (
+    idContrato: number | string,
+    idLogin: number | string,
+  ) => {
+    const loginId = Number(idLogin);
+    const contratoId = Number(idContrato);
+    setActionStatus((prev) => ({ ...prev, [loginId]: { status: "loading" } }));
+    try {
+      const data = await apiService.getDiagnostico(contratoId);
+      setDiagnosticData((prev) => ({ ...prev, [loginId]: data }));
+      setActionStatus((prev) => ({
+        ...prev,
+        [loginId]: { status: "success", message: "Diagnóstico concluído" },
+      }));
+    } catch (error: any) {
+      setActionStatus((prev) => ({
+        ...prev,
+        [loginId]: { status: "error", message: "Falha no diagnóstico" },
+      }));
+    } finally {
+      setTimeout(
+        () =>
+          setActionStatus((prev) => ({
+            ...prev,
+            [loginId]: { status: "idle" },
+          })),
+        3000,
+      );
+    }
   };
 
   const performLoginAction = async (
@@ -601,6 +664,16 @@ const ClientArea: React.FC = () => {
     window.addEventListener("auth-change", handleAuthChange);
     return () => window.removeEventListener("auth-change", handleAuthChange);
   }, []);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  useEffect(() => {
+    if (dashboardData?.contratos?.length && selectedContractId === null) {
+      setSelectedContractId(dashboardData.contratos[0].id);
+    }
+  }, [dashboardData, selectedContractId]);
 
   // useEffect(() => {
   //   if (activeTab === "ai_support" && chatEndRef.current) {
@@ -888,7 +961,7 @@ const ClientArea: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-black pt-24 pb-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
         <header className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-10">
           <div>
             <h1 className="text-3xl font-bold text-white flex items-center gap-2">
@@ -937,6 +1010,49 @@ const ClientArea: React.FC = () => {
           </aside>
 
           <main className="w-full lg:w-3/4">
+            {/* === NOTIFICAÇÃO GERAL DE DÉBITOS === */}
+            {(() => {
+              const totalGeralDivida = (dashboardData?.faturas || [])
+                .filter((f) => f.status === "A")
+                .reduce(
+                  (acc, curr) =>
+                    acc + parseFloat(String(curr.valor).replace(",", ".")),
+                  0,
+                );
+
+              if (totalGeralDivida > 0) {
+                return (
+                  <div className="mb-6 bg-red-600 text-white p-6 rounded-2xl shadow-xl animate-pulse flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="bg-white/20 p-3 rounded-full">
+                        <AlertCircle className="text-white" size={24} />
+                      </div>
+                      <div>
+                        <p className="font-bold text-lg">
+                          Atenção: Existem débitos pendentes
+                        </p>
+                        <p className="text-sm text-white/90">
+                          Valor total acumulado:{" "}
+                          <span className="font-black text-2xl ml-1">
+                            {totalGeralDivida.toLocaleString("pt-BR", {
+                              style: "currency",
+                              currency: "BRL",
+                            })}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => setActiveTab("invoices")}
+                      className="!bg-white !text-red-600 !px-8 !py-3 !rounded-xl !font-bold !text-sm hover:!bg-gray-100 transition-colors whitespace-nowrap shadow-md"
+                    >
+                      Resolver Agora
+                    </Button>
+                  </div>
+                );
+              }
+              return null;
+            })()}
             <div className="lg:hidden shrink-0 overflow-x-auto whitespace-nowrap p-4 mb-6 flex gap-2 bg-fiber-card border border-white/10 rounded-2xl">
               {TABS.map((tab) => (
                 <button
@@ -1294,174 +1410,281 @@ const ClientArea: React.FC = () => {
                 </div>
               )}
 
-              {/* --- FATURAS (LISTAGEM FILTRADA) --- */}
               {activeTab === "invoices" && (
-                <div>
-                  <h2 className="text-2xl font-bold text-white mb-6">
-                    Minhas Faturas
-                  </h2>
-                  <div className="flex items-center gap-2 mb-8 bg-neutral-900 p-1.5 rounded-full border border-white/10 w-fit">
-                    {["aberto", "pago"].map((s) => (
+                <div className="space-y-8">
+                  <div className="flex items-center gap-3 border-b border-white/10 pb-4">
+                    <div className="bg-fiber-orange/10 p-2 rounded-lg text-fiber-orange">
+                      <FileText size={20} />
+                    </div>
+                    <h2 className="text-2xl font-bold text-white">
+                      Financeiro & Contratos
+                    </h2>
+                  </div>
+
+                  {/* Filtros */}
+                  <div className="flex gap-2 mb-6 bg-neutral-900 p-1.5 rounded-xl border border-white/5 w-fit">
+                    {["aberto", "pago", "todos"].map((s) => (
                       <button
                         key={s}
                         onClick={() => setInvoiceStatusFilter(s)}
-                        className={`px-6 py-2 text-xs font-black uppercase tracking-widest rounded-full transition-all ${
+                        className={`px-4 py-2 text-xs font-bold uppercase rounded-lg transition-all ${
                           invoiceStatusFilter === s
-                            ? "bg-fiber-orange text-white shadow-lg shadow-orange-950/40 scale-105"
-                            : "text-gray-500 hover:text-gray-300"
+                            ? "bg-fiber-orange text-white shadow"
+                            : "bg-transparent text-gray-500 hover:text-gray-300"
                         }`}
                       >
-                        {s === "aberto" ? "Pendentes" : "Histórico de Pagas"}
+                        {s === "aberto"
+                          ? "Pendentes"
+                          : s === "pago"
+                            ? "Histórico"
+                            : "Ver Tudo"}
                       </button>
                     ))}
                   </div>
-                  <div className="space-y-4">
-                    {(dashboardData?.faturas || [])
-                      .filter(
-                        (inv) =>
-                          (inv.status === "A" ? "aberto" : "pago") ===
-                          invoiceStatusFilter,
-                      )
-                      .sort((a, b) => {
-                        if (invoiceStatusFilter === "aberto") {
-                          return a.data_vencimento.localeCompare(
-                            b.data_vencimento,
-                          );
-                        } else {
-                          return b.data_vencimento.localeCompare(
-                            a.data_vencimento,
-                          );
-                        }
-                      })
-                      .map((invoice) => {
-                        // Cálculos de valor para exibição segura
-                        const valOriginal = parseFloat(
-                          String(invoice.valor).replace(",", "."),
-                        );
-                        const rawRecebido = (invoice as any).valor_recebido;
-                        const valRecebido = rawRecebido
-                          ? parseFloat(String(rawRecebido).replace(",", "."))
-                          : 0;
-                        const estaPago =
-                          invoice.status === "P" || invoice.status === "R";
-                        const valorFinal =
-                          estaPago && valRecebido > 0
-                            ? valRecebido
-                            : valOriginal;
 
+                  {/* Seletor de Contrato (Destaque quando houver múltiplos) */}
+                  {dashboardData && dashboardData.contratos.length > 1 && (
+                    <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
+                      {dashboardData.contratos.map((c) => (
+                        <button
+                          key={c.id}
+                          onClick={() => setSelectedContractId(c.id)}
+                          className={`flex-shrink-0 px-5 py-3 rounded-2xl border transition-all text-left min-w-[200px] ${
+                            selectedContractId === c.id
+                              ? "bg-fiber-blue border-fiber-blue text-white shadow-xl shadow-blue-900/30 ring-2 ring-white/10"
+                              : "bg-neutral-950 border-white/5 text-gray-500 hover:border-white/20 hover:text-gray-300"
+                          }`}
+                        >
+                          <div className="flex justify-between items-start mb-1">
+                            <span className="text-[10px] font-black uppercase tracking-tighter opacity-60">
+                              ID: {c.id}
+                            </span>
+                            {c.status === "A" ? (
+                              <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+                            ) : (
+                              <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                            )}
+                          </div>
+                          <div className="text-xs font-bold truncate">
+                            {c.plano || c.descricao_aux_plano_venda}
+                          </div>
+                          <div className="text-[9px] mt-1 opacity-50 truncate">
+                            {c.endereco}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Lista por Contrato */}
+                  {dashboardData?.contratos
+                    .filter(
+                      (c) =>
+                        selectedContractId === null ||
+                        c.id === selectedContractId,
+                    )
+                    .map((contrato) => {
+                      // Busca faturas deste contrato (Fix: Checa id_contrato e contrato_id)
+                      const faturasContrato = (
+                        dashboardData?.faturas || []
+                      ).filter((f) => {
+                        const fContratoId = f.id_contrato || f.contrato_id;
                         return (
-                          <div
-                            key={invoice.id}
-                            className="bg-neutral-900 border border-white/10 rounded-2xl p-5 flex flex-col md:flex-row justify-between items-center gap-4 hover:border-white/20 transition-all group"
-                          >
-                            <div className="flex items-center gap-4 w-full md:w-auto">
-                              <div
-                                className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                                  estaPago
-                                    ? "bg-fiber-green/10 text-fiber-green"
-                                    : "bg-fiber-orange/10 text-fiber-orange"
-                                }`}
-                              >
-                                {estaPago ? (
-                                  <CheckCircle size={24} />
-                                ) : (
-                                  <Clock size={24} />
-                                )}
+                          String(fContratoId) === String(contrato.id) &&
+                          f.status !== "C" &&
+                          (invoiceStatusFilter === "todos" ||
+                            (invoiceStatusFilter === "aberto"
+                              ? f.status === "A"
+                              : f.status === "P" || f.status === "R"))
+                        );
+                      });
+
+                    // Busca login associado
+                    const loginAssociado = dashboardData.logins.find(
+                      (l) => String(l.contrato_id) === String(contrato.id),
+                    );
+
+                    // Se não tiver faturas no filtro e não for 'todos', pula
+                    if (
+                      faturasContrato.length === 0 &&
+                      invoiceStatusFilter !== "todos"
+                    )
+                      return null;
+
+                    return (
+                      <div
+                        key={contrato.id}
+                        className="bg-neutral-900 border border-white/10 rounded-2xl overflow-hidden shadow-sm mb-8 animate-fadeIn"
+                      >
+                        {/* CABEÇALHO DO CONTRATO (Endereço + Login + Status) */}
+                        <div className="bg-white/5 p-6 border-b border-white/10">
+                          <div className="flex flex-col lg:flex-row justify-between gap-6">
+                            {/* Informações do Plano e Endereço */}
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                <span className="bg-fiber-orange text-white text-[10px] font-black px-2 py-1 rounded uppercase tracking-wider">
+                                  {contrato.plano || contrato.descricao_aux_plano_venda}
+                                </span>
+                                <span
+                                  className={`text-[10px] font-bold px-2 py-1 rounded border ${
+                                    contrato.status === "A"
+                                      ? "border-green-500/30 text-green-400 bg-green-500/10"
+                                      : "border-red-500/30 text-red-400 bg-red-500/10"
+                                  }`}
+                                >
+                                  {contrato.status === "A"
+                                    ? "ATIVO"
+                                    : "BLOQUEADO"}
+                                </span>
                               </div>
-                              <div>
-                                <p className="font-bold text-lg text-white">
-                                  R${" "}
-                                  {valorFinal.toLocaleString("pt-BR", {
-                                    minimumFractionDigits: 2,
-                                  })}
-                                </p>
 
-                                {/* Exibe valor original riscado se houver diferença */}
-                                {estaPago &&
-                                  valRecebido > 0 &&
-                                  Math.abs(valRecebido - valOriginal) >
-                                    0.01 && (
-                                    <span className="text-[10px] text-gray-500 line-through block">
-                                      Orig: R${" "}
-                                      {valOriginal.toLocaleString("pt-BR", {
-                                        minimumFractionDigits: 2,
-                                      })}
-                                    </span>
-                                  )}
+                              <div className="text-gray-300 text-sm mb-2 font-medium flex items-center gap-2">
+                                <MapPin size={14} className="text-gray-500" />
+                                {contrato.endereco}, {contrato.numero} -{" "}
+                                {contrato.bairro}
+                              </div>
 
-                                <p className="text-xs text-gray-500 uppercase font-black mt-1">
-                                  Vencimento:{" "}
-                                  {invoice.data_vencimento
-                                    .split("-")
-                                    .reverse()
-                                    .join("/")}
-                                </p>
+                              <div className="text-xs text-gray-500 font-mono bg-black/40 px-2 py-1 rounded border border-white/5 inline-block">
+                                Login PPPoE:{" "}
+                                <strong className="text-white">
+                                  {loginAssociado?.login || "Não identificado"}
+                                </strong>
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-3 w-full md:w-auto">
-                              {invoice.status === "A" && (
-                                <>
-                                  <Button
-                                    variant="primary"
-                                    // CORREÇÃO: Passando invoice.id (number) ao invés de string
-                                    onClick={() =>
-                                      handleOpenPixModal(
-                                        invoice as unknown as BoletoView,
-                                      )
-                                    }
-                                    className="!py-2 !px-4 !text-xs gap-2 !rounded-xl"
-                                  >
-                                    <QrCode size={14} /> Pagar com PIX
-                                  </Button>
-                                  <button
-                                    // CORREÇÃO: Adicionado o segundo argumento (ID) para o feedback visual
-                                    onClick={() =>
-                                      handleCopy(
-                                        invoice.linha_digitavel!,
-                                        invoice.id,
-                                      )
-                                    }
-                                    className={`p-3 rounded-xl transition-colors border ${
-                                      copiedInvoiceId === invoice.id
-                                        ? "bg-green-500/20 text-green-400 border-green-500/30"
-                                        : "bg-white/5 text-gray-400 hover:text-white border-white/5"
-                                    }`}
-                                    title="Copiar Código de Barras"
-                                  >
-                                    {copiedInvoiceId === invoice.id ? (
-                                      <CheckCircle size={16} />
-                                    ) : (
-                                      <Copy size={16} />
-                                    )}
-                                  </button>
-                                </>
+                            {/* Ações (Desbloqueio) */}
+                            <div className="flex items-center gap-3">
+                              {contrato.status !== "A" && (
+                                <Button
+                                  variant="primary"
+                                  className="!bg-amber-600 hover:!bg-amber-700 !py-2.5 !px-5 !text-xs gap-2 shadow-lg shadow-amber-950/20"
+                                  onClick={() =>
+                                    handleUnlockContract(contrato.id)
+                                  }
+                                  disabled={unlockingId === contrato.id}
+                                >
+                                  {unlockingId === contrato.id ? (
+                                    <Loader2
+                                      size={14}
+                                      className="animate-spin"
+                                    />
+                                  ) : (
+                                    <Unlock size={14} />
+                                  )}
+                                  DESBLOQUEIO DE CONFIANÇA
+                                </Button>
                               )}
-                              <button
-                                onClick={() => handleDownloadPdf(invoice.id)}
-                                className="p-3 bg-white/5 rounded-xl text-gray-400 hover:text-white transition-colors border border-white/5"
-                                title="Baixar PDF"
-                              >
-                                <Download size={16} />
-                              </button>
+
+                              {/* Botão de Assinatura (se pendente) */}
+                              {dashboardData.termos.some(
+                                (t) =>
+                                  String(t.id_contrato) ===
+                                    String(contrato.id) && t.status === "P",
+                              ) && (
+                                <Button
+                                  variant="primary"
+                                  className="!bg-fiber-blue hover:!bg-blue-600 !py-2.5 !px-5 !text-xs gap-2"
+                                  onClick={() => {
+                                    const termo = dashboardData.termos.find(
+                                      (t) =>
+                                        String(t.id_contrato) ===
+                                          String(contrato.id) &&
+                                        t.status === "P",
+                                    );
+                                    if (termo) handleSignContract(termo.id);
+                                  }}
+                                  disabled={isSigning}
+                                >
+                                  {isSigning ? (
+                                    <Loader2
+                                      size={14}
+                                      className="animate-spin"
+                                    />
+                                  ) : (
+                                    <FileSignature size={14} />
+                                  )}
+                                  ASSINAR CONTRATO
+                                </Button>
+                              )}
                             </div>
                           </div>
-                        );
-                      })}
-
-                    {dashboardData &&
-                      dashboardData.faturas.filter(
-                        (inv) =>
-                          (inv.status === "A" ? "aberto" : "pago") ===
-                          invoiceStatusFilter,
-                      ).length === 0 && (
-                        <div className="text-center py-20 bg-neutral-900/50 rounded-3xl border border-dashed border-white/10">
-                          <p className="text-gray-500 font-medium">
-                            Nenhuma fatura encontrada nesta categoria.
-                          </p>
                         </div>
-                      )}
-                  </div>
+
+                        {/* LISTA DE FATURAS DESTE CONTRATO */}
+                        <div className="p-4 space-y-3 bg-black/20">
+                          {faturasContrato.length > 0 ? (
+                            faturasContrato.map((invoice) => (
+                              <div
+                                key={invoice.id}
+                                className="bg-neutral-900 border border-white/5 rounded-xl p-4 flex flex-col sm:flex-row justify-between items-center hover:bg-white/5 transition gap-4"
+                              >
+                                <div className="flex items-center gap-4 w-full sm:w-auto">
+                                  <div
+                                    className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                                      invoice.status === "P" ||
+                                      invoice.status === "R"
+                                        ? "bg-green-500/10 text-green-400"
+                                        : "bg-fiber-orange/10 text-fiber-orange"
+                                    }`}
+                                  >
+                                    {invoice.status === "P" ||
+                                    invoice.status === "R" ? (
+                                      <CheckCircle size={20} />
+                                    ) : (
+                                      <Clock size={20} />
+                                    )}
+                                  </div>
+                                  <div>
+                                    <p className="font-bold text-white">
+                                      R$ {invoice.valor}
+                                    </p>
+                                    <p className="text-[10px] text-gray-500 uppercase font-black">
+                                      Venc: {invoice.data_vencimento}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex gap-2 w-full sm:w-auto">
+                                  {invoice.status === "A" && (
+                                    <Button
+                                      variant="primary"
+                                      onClick={() =>
+                                        handleOpenPixModal(
+                                          invoice as unknown as BoletoView,
+                                        )
+                                      }
+                                      disabled={loadingPixId === invoice.id}
+                                      className="!py-1.5 !px-3 !text-[10px] !rounded-lg !bg-fiber-green hover:!bg-green-600 flex-1 sm:flex-none"
+                                    >
+                                      {loadingPixId === invoice.id ? (
+                                        <Loader2
+                                          size={12}
+                                          className="animate-spin"
+                                        />
+                                      ) : (
+                                        "PIX"
+                                      )}
+                                    </Button>
+                                  )}
+                                  <button
+                                    onClick={() =>
+                                      handleDownloadPdf(invoice.id)
+                                    }
+                                    className="p-2 bg-white/5 text-gray-500 hover:text-white rounded-lg border border-white/5"
+                                  >
+                                    <Download size={14} />
+                                  </button>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-center text-gray-500 py-6 text-sm italic">
+                              Nenhuma fatura para exibir neste filtro.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
@@ -1746,129 +1969,214 @@ const ClientArea: React.FC = () => {
               {activeTab === "connections" && dashboardData && (
                 <div>
                   <h2 className="text-2xl font-bold text-white mb-6">
-                    Minhas Conexões
+                    Minhas Conexões e Diagnóstico
                   </h2>
                   <div className="space-y-6">
-                    {dashboardData.logins.map((login) => (
-                      <div
-                        key={login.id}
-                        className="bg-neutral-900 border border-white/10 rounded-xl p-6"
-                      >
-                        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-4">
-                          <h3 className="text-lg font-bold text-white">
-                            {login.login}
-                          </h3>
-                          <div
-                            className={`flex items-center gap-2 font-bold text-sm ${
-                              login.online === "S"
-                                ? "text-fiber-green"
-                                : "text-gray-500"
-                            }`}
-                          >
+                    {dashboardData.logins.map((login) => {
+                      const diag = diagnosticData[login.id]; // Dados do diagnóstico realizado
+
+                      return (
+                        <div
+                          key={login.id}
+                          className="bg-neutral-900 border border-white/10 rounded-2xl p-6"
+                        >
+                          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
+                            <div>
+                              <h3 className="text-xl font-bold text-white">
+                                {login.login}
+                              </h3>
+                              <p className="text-[10px] text-gray-500 font-mono mt-1">
+                                {login.ont_modelo || "Broadband Gateway"}
+                              </p>
+                            </div>
                             <div
-                              className={`w-2.5 h-2.5 rounded-full ${
+                              className={`flex items-center gap-2 font-bold text-sm px-4 py-1.5 rounded-full border ${
                                 login.online === "S"
-                                  ? "bg-fiber-green animate-pulse"
-                                  : "bg-gray-500"
+                                  ? "bg-green-500/10 text-green-400 border-green-500/20"
+                                  : "bg-gray-500/10 text-gray-500 border-gray-500/20"
                               }`}
-                            ></div>
-                            {login.online === "S" ? "Online" : "Offline"}
+                            >
+                              <div
+                                className={`w-2.5 h-2.5 rounded-full ${
+                                  login.online === "S"
+                                    ? "bg-green-400 animate-pulse"
+                                    : "bg-gray-500"
+                                }`}
+                              ></div>
+                              {login.online === "S" ? "Online" : "Offline"}
+                            </div>
                           </div>
+
+                          {/* RESULTADO DO DIAGNÓSTICO RICO (Se houver) */}
+                          {diag ? (
+                            <div className="mb-6 bg-black/40 border border-fiber-blue/30 rounded-xl p-5 animate-fadeIn">
+                              <h4 className="text-xs font-bold text-fiber-blue mb-4 flex items-center gap-2 uppercase tracking-widest">
+                                <Activity size={14} /> Resultado do Diagnóstico
+                                Técnico
+                              </h4>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                <div>
+                                  <p className="text-[9px] text-gray-500 uppercase font-black mb-1">
+                                    Sinal da Fibra
+                                  </p>
+                                  <p
+                                    className={`text-xl font-bold ${
+                                      parseFloat(diag.sinal_dbm) < -25
+                                        ? "text-red-400"
+                                        : "text-green-400"
+                                    }`}
+                                  >
+                                    {diag.sinal_dbm ||
+                                      login.ont_sinal_rx ||
+                                      "N/A"}{" "}
+                                    <span className="text-[10px] font-normal text-gray-400 italic">
+                                      dBm
+                                    </span>
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-[9px] text-gray-500 uppercase font-black mb-1">
+                                    Status ONU
+                                  </p>
+                                  <p className="text-sm text-white font-bold">
+                                    {diag.status_onu || "Operacional"}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-[9px] text-gray-500 uppercase font-black mb-1">
+                                    MAC Address
+                                  </p>
+                                  <p className="text-xs text-white font-mono bg-white/5 px-2 py-0.5 rounded">
+                                    {diag.mac_onu || login.ont_mac || "--"}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-[9px] text-gray-500 uppercase font-black mb-1">
+                                    Última Atualização
+                                  </p>
+                                  <p className="text-xs text-white">
+                                    {diag.ultima_conexao
+                                      ? diag.ultima_conexao
+                                          .split(" ")[0]
+                                          .split("-")
+                                          .reverse()
+                                          .join("/")
+                                      : "Tempo Real"}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-6 bg-black/20 p-4 rounded-xl border border-white/5">
+                              <div className="flex flex-col gap-1">
+                                <span className="text-[9px] text-gray-500 uppercase font-black">
+                                  Interface
+                                </span>
+                                <span className="text-white flex items-center gap-2">
+                                  <Server size={14} className="text-gray-500" />{" "}
+                                  Fiber Optic
+                                </span>
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                <span className="text-[9px] text-gray-500 uppercase font-black">
+                                  Sinal RX
+                                </span>
+                                <span className="text-white font-bold">
+                                  {login.sinal_ultimo_atendimento || "- dBm"}
+                                </span>
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                <span className="text-[9px] text-gray-500 uppercase font-black">
+                                  Uptime
+                                </span>
+                                <span className="text-white font-mono">
+                                  {login.tempo_conectado || "N/A"}
+                                </span>
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                <span className="text-[9px] text-gray-500 uppercase font-black">
+                                  IP Interno
+                                </span>
+                                <span className="text-white font-mono text-xs">
+                                  {login.ip_privado || "--"}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex flex-col sm:flex-row gap-3">
+                            <Button
+                              onClick={() =>
+                                performLoginAction(login.id, "limpar-mac")
+                              }
+                              variant="secondary"
+                              className="!text-xs !py-2.5 !px-5 gap-2 !rounded-xl"
+                              disabled={
+                                actionStatus[login.id]?.status === "loading"
+                              }
+                            >
+                              {actionStatus[login.id]?.status ===
+                              "loading" ? (
+                                <Loader2 size={14} className="animate-spin" />
+                              ) : (
+                                <RefreshCw size={14} />
+                              )}{" "}
+                              Limpar MAC
+                            </Button>
+                            <Button
+                              onClick={() =>
+                                performLoginAction(login.id, "desconectar")
+                              }
+                              variant="secondary"
+                              className="!text-xs !py-2.5 !px-5 gap-2 !rounded-xl"
+                              disabled={
+                                actionStatus[login.id]?.status === "loading"
+                              }
+                            >
+                              {actionStatus[login.id]?.status ===
+                              "loading" ? (
+                                <Loader2 size={14} className="animate-spin" />
+                              ) : (
+                                <Power size={14} />
+                              )}{" "}
+                              Desconectar
+                            </Button>
+                            <Button
+                              onClick={() =>
+                                handleAdvancedDiagnostic(
+                                  login.contrato_id,
+                                  login.id,
+                                )
+                              }
+                              variant="outline"
+                              className="!text-xs !py-2.5 !px-5 gap-2 !rounded-xl border-fiber-blue text-fiber-blue hover:!bg-fiber-blue hover:!text-white transition-all shadow-lg shadow-blue-900/10"
+                              disabled={
+                                actionStatus[login.id]?.status === "loading"
+                              }
+                            >
+                              {actionStatus[login.id]?.status ===
+                              "loading" ? (
+                                <Loader2 size={14} className="animate-spin" />
+                              ) : (
+                                <Signal size={14} />
+                              )}{" "}
+                              Diagnóstico Profissional
+                            </Button>
+                          </div>
+                          {actionStatus[login.id]?.status === "success" &&
+                            !diag && (
+                              <p className="text-green-500 text-xs mt-3">
+                                {actionStatus[login.id]?.message}
+                              </p>
+                            )}
+                          {actionStatus[login.id]?.status === "error" && (
+                            <p className="text-red-500 text-xs mt-3">
+                              {actionStatus[login.id]?.message}
+                            </p>
+                          )}
                         </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-6">
-                          <div className="flex items-center gap-2 text-gray-400">
-                            <Server size={14} /> <strong>ONT:</strong>{" "}
-                            <span className="text-white">
-                              {login.sinal_ultimo_atendimento || "N/A"}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 text-gray-400">
-                            <Clock size={14} /> <strong>Uptime:</strong>{" "}
-                            <span className="text-white">
-                              {login.tempo_conectado || "N/A"}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 text-gray-400">
-                            <Activity size={14} /> <strong>IP Privado:</strong>{" "}
-                            <span className="text-white font-mono text-xs">
-                              {login.ip_privado || "--"}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex flex-col sm:flex-row gap-3">
-                          <Button
-                            onClick={() =>
-                              performLoginAction(login.id, "limpar-mac")
-                            }
-                            variant="secondary"
-                            className="!text-xs !py-2 !px-4 gap-2"
-                            disabled={
-                              actionStatus[login.id]?.status === "loading"
-                            }
-                          >
-                            {actionStatus[login.id]?.status === "loading" ? (
-                              <Loader2 size={14} className="animate-spin" />
-                            ) : (
-                              <X size={14} />
-                            )}{" "}
-                            Limpar MAC
-                          </Button>
-                          <Button
-                            onClick={() =>
-                              performLoginAction(login.id, "desconectar")
-                            }
-                            variant="secondary"
-                            className="!text-xs !py-2 !px-4 gap-2"
-                            disabled={
-                              actionStatus[login.id]?.status === "loading"
-                            }
-                          >
-                            {actionStatus[login.id]?.status === "loading" ? (
-                              <Loader2 size={14} className="animate-spin" />
-                            ) : (
-                              <Power size={14} />
-                            )}{" "}
-                            Desconectar
-                          </Button>
-                          <Button
-                            onClick={() =>
-                              performLoginAction(login.id, "diagnostico")
-                            }
-                            variant="outline"
-                            className="!text-xs !py-2 !px-4 gap-2"
-                            disabled={
-                              actionStatus[login.id]?.status === "loading"
-                            }
-                          >
-                            {actionStatus[login.id]?.status === "loading" ? (
-                              <Loader2 size={14} className="animate-spin" />
-                            ) : (
-                              <Zap size={14} />
-                            )}{" "}
-                            Diagnóstico
-                          </Button>
-                        </div>
-                        {actionStatus[login.id]?.status === "success" && (
-                          <p className="text-green-500 text-xs mt-3">
-                            {actionStatus[login.id]?.message}
-                          </p>
-                        )}
-                        {actionStatus[login.id]?.status === "error" && (
-                          <p className="text-red-500 text-xs mt-3">
-                            {actionStatus[login.id]?.message}
-                          </p>
-                        )}
-                        {diagResults[login.id] && (
-                          <p className="text-blue-400 text-xs mt-3 font-mono">
-                            Consumo Atual: DL{" "}
-                            {bytesToGB(Number(diagResults[login.id]?.download))}{" "}
-                            GB / UL{" "}
-                            {bytesToGB(Number(diagResults[login.id]?.upload))}{" "}
-                            GB
-                          </p>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}

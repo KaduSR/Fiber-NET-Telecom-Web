@@ -58,7 +58,7 @@ const SupportModal: React.FC<SupportModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center px-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
@@ -71,14 +71,14 @@ const SupportModal: React.FC<SupportModalProps> = ({
       ></div>
 
       {/* Modal Content */}
-      <div className="relative w-full max-w-md bg-fiber-card border border-white/10 rounded-2xl shadow-2xl transform transition-all animate-float scale-100 overflow-hidden">
-        {/* Header */}
-        <div className="bg-neutral-900 p-6 border-b border-white/5 flex justify-between items-center">
+      <div className="relative w-full max-w-[95%] sm:max-w-md bg-fiber-card border border-white/10 rounded-2xl shadow-2xl transform transition-all animate-fadeIn scale-100 flex flex-col max-h-[90vh] overflow-hidden 2xl:max-w-lg">
+        {/* Header - Fixed */}
+        <div className="bg-neutral-900 p-5 sm:p-6 border-b border-white/5 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-fiber-orange/10 rounded-lg text-fiber-orange">
               <Headphones size={24} aria-hidden="true" />
             </div>
-            <h2 id="modal-title" className="text-xl font-bold text-white">
+            <h2 id="modal-title" className="text-lg sm:text-xl font-bold text-white">
               Central de Suporte
             </h2>
           </div>
@@ -91,95 +91,98 @@ const SupportModal: React.FC<SupportModalProps> = ({
           </button>
         </div>
 
-        {/* Body */}
-        <div className="p-6 space-y-4">
-          <p className="text-gray-400 text-sm mb-4 text-center">
-            Escolha como deseja falar com a equipe <FiberNetTextLogo />.
-            <p className="text-center">
-              Atendimento via WhatsApp ou por telefone fixo.
-            </p>
-          </p>
+        {/* Scrollable Body */}
+        <div className="relative flex-grow overflow-hidden group/scroll">
+          {/* Top Fade Indicator */}
+          <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-fiber-card to-transparent z-10 pointer-events-none opacity-0 group-hover/scroll:opacity-100 transition-opacity"></div>
+          
+          <div className="p-5 sm:p-6 space-y-4 overflow-y-auto max-h-[50vh] custom-scrollbar">
+            <div className="text-gray-400 text-sm mb-4 text-center">
+              <p>Escolha como deseja falar com a equipe <FiberNetTextLogo />.</p>
+              <p className="mt-1">Atendimento via WhatsApp ou telefone fixo.</p>
+            </div>
 
-          {/* WhatsApp Option */}
-          <button
-            onClick={() =>
-              window.open(
-                `https://wa.me/55${CONTACT_INFO.whatsapp.replace(/\D/g, "")}`,
-                "_blank",
-              )
-            }
-            className="w-full flex items-center justify-between p-4 bg-neutral-800 hover:bg-fiber-green/10 border border-white/5 hover:border-fiber-green/50 rounded-xl group transition-all focus:outline-none focus:ring-2 focus:ring-fiber-green"
-            aria-label="Iniciar conversa no WhatsApp"
-          >
-            <div className="flex items-center gap-4">
-              <div className="bg-fiber-green/20 p-3 rounded-full text-fiber-green group-hover:scale-110 transition-transform">
-                <MessageCircle size={24} aria-hidden="true" />
-              </div>
-              <div className="text-left">
-                <div className="text-white font-bold">Via WhatsApp</div>
-                <div className="text-xs text-gray-400">
-                  Atendimento rápido e prático
+            {/* WhatsApp Option */}
+            <button
+              onClick={() =>
+                window.open(
+                  `https://wa.me/55${CONTACT_INFO.whatsapp.replace(/\D/g, "")}`,
+                  "_blank",
+                )
+              }
+              className="w-full flex items-center justify-between p-4 bg-neutral-800 hover:bg-fiber-green/10 border border-white/5 hover:border-fiber-green/50 rounded-xl group transition-all focus:outline-none focus:ring-2 focus:ring-fiber-green"
+              aria-label="Iniciar conversa no WhatsApp"
+            >
+              <div className="flex items-center gap-4">
+                <div className="bg-fiber-green/20 p-3 rounded-full text-fiber-green group-hover:scale-110 transition-transform">
+                  <MessageCircle size={24} aria-hidden="true" />
+                </div>
+                <div className="text-left">
+                  <div className="text-white font-bold text-sm sm:text-base">Via WhatsApp</div>
+                  <div className="text-[10px] sm:text-xs text-gray-400">
+                    Atendimento rápido e prático
+                  </div>
                 </div>
               </div>
-            </div>
-            <ExternalLink
-              size={16}
-              className="text-gray-500 group-hover:text-fiber-green"
-              aria-hidden="true"
-            />
-          </button>
+              <ExternalLink
+                size={16}
+                className="text-gray-500 group-hover:text-fiber-green"
+                aria-hidden="true"
+              />
+            </button>
 
-          {/* 2ª Via Rápida Option */}
-          <button
-            onClick={handleSegundaViaClick}
-            className="w-full flex items-center justify-between p-4 bg-neutral-800 hover:bg-fiber-orange/10 border border-white/5 hover:border-fiber-orange/50 rounded-xl group transition-all focus:outline-none focus:ring-2 focus:ring-fiber-orange"
-            aria-label="Acessar 2ª Via de Boleto"
-          >
-            <div className="flex items-center gap-4">
-              <div className="bg-fiber-orange/20 p-3 rounded-full text-fiber-orange group-hover:scale-110 transition-transform">
-                <FileText size={24} aria-hidden="true" />
-              </div>
-              <div className="text-left">
-                <div className="text-white font-bold">2ª Via de Boleto</div>
-                <div className="text-xs text-gray-400">
-                  Acesso rápido por CPF/CNPJ
+            {/* 2ª Via Rápida Option */}
+            <button
+              onClick={handleSegundaViaClick}
+              className="w-full flex items-center justify-between p-4 bg-neutral-800 hover:bg-fiber-orange/10 border border-white/5 hover:border-fiber-orange/50 rounded-xl group transition-all focus:outline-none focus:ring-2 focus:ring-fiber-orange"
+              aria-label="Acessar 2ª Via de Boleto"
+            >
+              <div className="flex items-center gap-4">
+                <div className="bg-fiber-orange/20 p-3 rounded-full text-fiber-orange group-hover:scale-110 transition-transform">
+                  <FileText size={24} aria-hidden="true" />
+                </div>
+                <div className="text-left">
+                  <div className="text-white font-bold text-sm sm:text-base">2ª Via de Boleto</div>
+                  <div className="text-[10px] sm:text-xs text-gray-400">
+                    Acesso rápido por CPF/CNPJ
+                  </div>
                 </div>
               </div>
-            </div>
-            <ExternalLink
-              size={16}
-              className="text-gray-500 group-hover:text-fiber-orange"
-              aria-hidden="true"
-            />
-          </button>
+              <ExternalLink
+                size={16}
+                className="text-gray-500 group-hover:text-fiber-orange"
+                aria-hidden="true"
+              />
+            </button>
 
-          {/* Ligação Rápida Option */}
-          <button
-            onClick={ligar}
-            className="w-full flex items-center justify-between p-4 bg-neutral-800 hover:bg-fiber-red/10 border border-white/5 hover:border-fiber-red/50 rounded-xl group transition-all focus:outline-none focus:ring-2 focus:ring-fiber-red"
-            aria-label="Telefone Fixo"
-          >
-            <div className="flex items-center gap-4">
-              <div className="bg-fiber-red/20 p-3 rounded-full text-fiber-red group-hover:scale-110 transition-transform">
-                <PhoneOutgoing size={24} aria-hidden="true" />
-              </div>
-              <div className="text-left">
-                <div className="text-white font-bold">Telefone Fixo</div>
-                <div className="text-xs text-gray-400">
-                  Acesso rápido para o telefone fixo
+            {/* Ligação Rápida Option */}
+            <button
+              onClick={ligar}
+              className="w-full flex items-center justify-between p-4 bg-neutral-800 hover:bg-fiber-red/10 border border-white/5 hover:border-fiber-red/50 rounded-xl group transition-all focus:outline-none focus:ring-2 focus:ring-fiber-red"
+              aria-label="Telefone Fixo"
+            >
+              <div className="flex items-center gap-4">
+                <div className="bg-fiber-red/20 p-3 rounded-full text-fiber-red group-hover:scale-110 transition-transform">
+                  <PhoneOutgoing size={24} aria-hidden="true" />
+                </div>
+                <div className="text-left">
+                  <div className="text-white font-bold text-sm sm:text-base">Telefone Fixo</div>
+                  <div className="text-[10px] sm:text-xs text-gray-400">
+                    Acesso rápido por chamada convencional
+                  </div>
                 </div>
               </div>
-            </div>
-            <ExternalLink
-              size={16}
-              className="text-gray-500 group-hover:text-fiber-red"
-              aria-hidden="true"
-            />
-          </button>
+              <ExternalLink
+                size={16}
+                className="text-gray-500 group-hover:text-fiber-red"
+                aria-hidden="true"
+              />
+            </button>
+          </div>
         </div>
 
-        {/* Footer Actions */}
-        <div className="bg-neutral-900 p-6 border-t border-white/5">
+        {/* Footer Actions - Fixed */}
+        <div className="bg-neutral-900 p-5 sm:p-6 border-t border-white/5 shrink-0">
           <Button
             variant="primary"
             fullWidth
@@ -189,13 +192,13 @@ const SupportModal: React.FC<SupportModalProps> = ({
             Acessar Área do Cliente
           </Button>
           <div className="mt-4 text-center">
-            <p className="text-[10px] text-red-500 uppercase tracking-wider font-bold">
+            <p className="text-[10px] text-fiber-red uppercase tracking-wider font-bold">
               ❌ NÃO ACEITAMOS LIGAÇÕES VIA WHATSAPP.
             </p>
             <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-2">
               Horário de Atendimento
             </p>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-[10px] sm:text-xs text-gray-400 mt-1">
               Segunda a Sexta: 08h às 12h e 13:30h às 17:30h • Sábado: 08h às
               12h
             </p>

@@ -39,19 +39,43 @@ const App: React.FC = () => {
 
     const baseTitle = "Fiber.Net Telecom";
     const titles: Record<string, string> = {
-      home: `Internet Fibra Óptica e Banda Larga em Rio das Flores | ${baseTitle}`,
-      planos: `Planos de Internet Banda Larga e Gamer | ${baseTitle}`,
-      "client-area": `Área do Cliente - 2ª Via e Suporte | ${baseTitle}`,
-      news: `Notícias de Tecnologia e Conectividade | ${baseTitle}`,
-      help: `Central de Ajuda e Suporte Técnico Fibra | ${baseTitle}`,
-      "client-guide": `Guia do Cliente Fiber.Net | ${baseTitle}`,
-      ethics: `Código de Ética e Conduta | ${baseTitle}`,
-      status: `Status dos Serviços em Tempo Real | ${baseTitle}`,
-      "segunda-via": `Emitir 2ª Via de Boleto - Banda Larga | ${baseTitle}`,
-      legal: `Privacidade, LGPD e Conformidade Legal | ${baseTitle}`,
+      home: `Internet Fibra em Rio das Flores | Fiber.Net Telecom ★`,
+      planos: `Melhores Planos de Internet Fibra e Gamer | Fiber.Net`,
+      "client-area": `Área do Cliente: 2ª Via e Suporte | Fiber.Net ✓`,
+      news: `Notícias e Novidades sobre Tecnologia | Fiber.Net`,
+      help: `Suporte Técnico e Central de Ajuda | Fiber.Net`,
+      "client-guide": `Guia do Cliente: Tudo sobre sua Conexão | Fiber.Net`,
+      ethics: `Código de Ética e Conduta | Fiber.Net Telecom`,
+      status: `Status da Rede em Tempo Real | Fiber.Net Telecom`,
+      "segunda-via": `Emitir 2ª Via de Boleto Grátis | Fiber.Net ✓`,
+      legal: `Privacidade e Termos Legais | Fiber.Net Telecom`,
+    };
+
+    const descriptions: Record<string, string> = {
+      home: "A melhor Internet Fibra Óptica de Rio das Flores com ultravelocidade e Wi-Fi 6. Suporte local especializado e instalação grátis. Conecte-se agora! ✓",
+      planos:
+        "Conheça nossos planos de internet fibra com ultra banda larga. Planos gamer e residenciais com o melhor custo-benefício de Rio das Flores. Confira! ★",
+      "client-area":
+        "Acesse a Área do Cliente Fiber.Net para emitir sua 2ª via de boleto, solicitar suporte técnico e gerenciar seus serviços com total facilidade. ✓",
+      news: "Fique por dentro das últimas notícias sobre tecnologia e internet em Rio das Flores. Dicas de segurança, conectividade e muito mais. Confira!",
+      help: "Precisa de ajuda? Acesse nossa Central de Suporte Fiber.Net. Tire dúvidas sobre pagamentos, suporte técnico e configurações de Wi-Fi. ✓",
+      ethics:
+        "Transparência e ética em primeiro lugar. Conheça o Código de Ética e Conduta da Fiber.Net Telecom para clientes e colaboradores.",
+      status:
+        "Acompanhe a estabilidade da nossa rede de fibra óptica em tempo real. Informações sobre manutenções e status técnico em Rio das Flores. ✓",
+      legal:
+        "Consulte nossos termos de uso, política de privacidade e conformidade com a LGPD. Sua segurança e privacidade são nossa prioridade.",
     };
 
     document.title = titles[currentPage] || baseTitle;
+
+    const metaDescription = document.querySelector('meta[name="description"]');
+    if (metaDescription) {
+      metaDescription.setAttribute(
+        "content",
+        descriptions[currentPage] || descriptions.home,
+      );
+    }
   }, [currentPage]);
 
   useEffect(() => {
@@ -91,7 +115,7 @@ const App: React.FC = () => {
               id="sobre"
               className="py-20 bg-fiber-card border-y border-white/5"
             >
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center mb-12">
                   <h2 className="text-3xl font-bold text-white mb-2">
                     Sobre a{" "}
@@ -226,15 +250,15 @@ const App: React.FC = () => {
                 </p>
                 <button
                   onClick={() => setIsSupportModalOpen(true)}
-                  className="inline-block bg-fiber-card text-fiber-orange font-bold py-4 px-8 rounded-lg shadow-lg hover:bg-neutral-900 transition-colors cursor-pointer"
+                  className="inline-block bg-fiber-card text-fiber-orange font-bold py-4 px-5 rounded-lg shadow-lg hover:bg-neutral-900 transition-colors cursor-pointer"
                 >
                   Fale Conosco Agora
                 </button>
               </div>
             </section>
 
-            <section id="planos" className="py-24 bg-fiber-dark">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <section id="planos" className="py-24 pb-20 bg-fiber-dark">
+              <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center max-w-3xl mx-auto mb-16">
                   <h2 className="text-3xl font-bold text-white sm:text-4xl mb-4">
                     Nossos Planos de Internet

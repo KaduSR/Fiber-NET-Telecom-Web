@@ -180,30 +180,12 @@ class ApiService {
     faturaId: string | number,
   ): Promise<{ qrcode: string; imagem: string }> {
     try {
-      // @ts-ignore
-      const url =
-        typeof ENDPOINTS.GET_PIX === "function"
-          ? ENDPOINTS.GET_PIX(faturaId)
-          : `/faturas/${faturaId}/pix`;
+      const url = `/boletos/${faturaId}/pix`;
       const response = await this.request<any>(url, { method: "GET" });
 
-      if (response.pix && response.pix.qrCode) {
-        return {
-          qrcode: response.pixCopiaECola,
-          imagem: response.pixImage || "",
-        };
-      }
-
-      if (response.pix_code && response.pix_qrcode) {
-        return {
-          qrcode: response.pix_code,
-          imagem: response.pix_qrcode || "",
-        };
-      }
-
       return {
-        qrcode: "",
-        imagem: "",
+        qrcode: response.pixCopiaECola || response.pix?.qrcode || response.pix?.qrCode?.qrcode || response.pix_code || "",
+        imagem: response.pixImagem || response.pix?.imagem || response.pix?.qrCode?.imagemQrcode || response.pix_qrcode || "",
       };
     } catch (error) {
       console.error(`[ApiService] Erro PIX ${faturaId}:`, error);
@@ -238,12 +220,38 @@ class ApiService {
 
   // === MÉTODOS DE AÇÃO ===
 
+  // === MÉTODOS DE AÇÃO DO CONTRATO (NOVOS) ===
+
+  /**
+   * Realiza o Desbloqueio de Confiança
+   */
+  async unlockContract(idContrato: number): Promise<{ success: boolean; message: string }> {
+    return this.request<any>(`/contratos/${idContrato}/desbloqueio`, {
+      method: "POST",
+    });
+  }
+
+  /**
+   * Busca Diagnóstico Avançado (Sinal, Status ONU)
+   */
+  async getDiagnostico(idContrato: number): Promise<any> {
+    return this.request<any>(`/contratos/${idContrato}/diagnostico`, {
+      method: "GET",
+    });
+  }
+
+  /**
+   * Assinatura Digital (Rota Corrigida)
+   */
+  async assinarContrato(idTermo: number): Promise<any> {
+    // Rota ajustada para bater com: router.post("/termos/:id_termo/assinar", ...)
+    return this.request<any>(`/termos/${idTermo}/assinar`, {
+      method: "POST",
+    });
+  }
+
   async performLoginAction(loginId: number, action: string): Promise<any> {
-    // @ts-ignore
-    const url =
-      typeof ENDPOINTS.LOGIN_ACTION === "function"
-        ? ENDPOINTS.LOGIN_ACTION(loginId, action)
-        : `/logins/${loginId}/${action}`;
+    const url = `/logins/${loginId}/${action}`;
     return this.request<any>(url, { method: "POST" });
   }
 async getContratoPdf(id: number): Promise<{base64_document: string}>{
@@ -265,11 +273,6 @@ async getContratoPdf(id: number): Promise<{base64_document: string}>{
     });
   }
 
-  async assinarContrato(idTermo: number): Promise<any> {
-    return this.request<any>(`/contratos/assinar/${idTermo}`, {
-      method: "POST",
-    });
-  }
 
   // async getContratoPdf(id: number): Promise<{ base64_document: string }> {
   //   const url = `/contratos/${id}/pdf`;

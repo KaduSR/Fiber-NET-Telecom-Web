@@ -28,6 +28,7 @@ export interface Fatura {
   id: number;
   id_cliente: number;
   contrato_id?: number;
+  id_contrato?: number;
   documento: string;
   data_emissao?: string;
   data_vencimento: string; 
