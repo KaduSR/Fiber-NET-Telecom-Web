@@ -302,6 +302,179 @@ const ConsumptionChart: React.FC<{ history?: Consumo["history"] }> = ({
   );
 };
 
+// === SUB-COMPONENT: INVOICE ITEM ===
+const InvoiceItem: React.FC<{
+  fatura: any;
+  downloadingInvoiceId: number | null;
+  loadingPixId: number | null;
+  copiedInvoiceId: number | null;
+  handleOpenPixModal: (boleto: BoletoView) => void;
+  handleCopy: (text: string, id: number) => void;
+  handleDownloadPdf: (faturaId: number) => void;
+  calcularEstimativa: (valor: number, dataVencimento: string) => any;
+}> = ({
+  fatura,
+  downloadingInvoiceId,
+  loadingPixId,
+  copiedInvoiceId,
+  handleOpenPixModal,
+  handleCopy,
+  handleDownloadPdf,
+  calcularEstimativa,
+}) => {
+    const valorNum =
+      typeof fatura.valor === "string"
+        ? parseFloat(fatura.valor.replace(",", "."))
+        : Number(fatura.valor);
+
+    const estimativa =
+      fatura.status === "A"
+        ? calcularEstimativa(valorNum, fatura.data_vencimento)
+        : null;
+
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    const dataSegura =
+      fatura.data_vencimento && fatura.data_vencimento.includes("T")
+        ? fatura.data_vencimento
+        : (fatura.data_vencimento || "") + "T12:00:00";
+
+    const venc = new Date(dataSegura);
+    venc.setHours(0, 0, 0, 0);
+
+    const diffTime = venc.getTime() - hoje.getTime();
+    const dias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    return (
+      <div
+        key={fatura.id}
+        className={`flex flex-col md:flex-row justify-between items-center bg-neutral-900 p-5 rounded-2xl border-l-4 hover:bg-white/5 transition-all gap-6 ${fatura.status === "A" ? "border-fiber-orange" : "border-fiber-green"
+          }`}
+      >
+        <div className="flex-1 w-full">
+          <div className="flex items-center gap-3 mb-2">
+            <p className="text-white font-black text-xl">
+              R${" "}
+              {valorNum.toLocaleString("pt-BR", {
+                minimumFractionDigits: 2,
+              })}
+            </p>
+            {fatura.status === "A" ? (
+              dias < 0 ? (
+                <span className="bg-red-500/20 text-red-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase border border-red-500/30">
+                  Atrasada
+                </span>
+              ) : (
+                <span className="bg-amber-500/20 text-amber-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase border border-amber-500/30">
+                  Pendente
+                </span>
+              )
+            ) : (
+              <span className="bg-green-500/20 text-green-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase border border-green-500/30">
+                Liquidada
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] text-gray-400 uppercase font-black tracking-wider flex items-center gap-1.5">
+            <Calendar size={12} className="text-fiber-orange" /> Vencimento:{" "}
+            {fatura.data_vencimento
+              ? fatura.data_vencimento.split("-").reverse().join("/")
+              : "N/A"}
+          </p>
+          {fatura.status === "A" && (
+            <p className="text-xs font-bold mt-1">
+              {dias < 0 ? (
+                <span className="text-red-400">
+                  {Math.abs(dias)} dias em atraso
+                </span>
+              ) : dias === 0 ? (
+                <span className="text-yellow-400">Vence hoje</span>
+              ) : (
+                <span className="text-fiber-blue">Vence em {dias} dias</span>
+              )}
+            </p>
+          )}
+
+          {estimativa && (
+            <div className="mt-3 pt-3 border-t border-white/5">
+              <div className="flex flex-wrap gap-4 text-[10px]">
+                <span className="text-gray-400">
+                  Multa (2%):{" "}
+                  <strong className="text-white">
+                    R$ {estimativa.multa.toFixed(2)}
+                  </strong>
+                </span>
+                <span className="text-gray-400">
+                  Juros:{" "}
+                  <strong className="text-white">
+                    R$ {estimativa.juros.toFixed(2)}
+                  </strong>
+                </span>
+                <span className="text-fiber-orange font-bold uppercase">
+                  Total: {estimativa.totalAtualizado}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex md:flex-col lg:flex-row gap-2 w-full md:w-auto">
+          {fatura.status === "A" && (
+            <>
+              <Button
+                onClick={() =>
+                  handleOpenPixModal(fatura as unknown as BoletoView)
+                }
+                disabled={loadingPixId === fatura.id}
+                className="!flex-1 !flex !items-center !justify-center gap-2 !bg-fiber-green text-white !px-4 !py-2.5 !rounded-xl !font-bold !text-xs hover:!bg-green-600 transition shadow-lg shadow-green-900/20"
+              >
+                {loadingPixId === fatura.id ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <QrCode size={16} />
+                )}
+                Pagar via PIX
+              </Button>
+
+              <Button
+                onClick={() => handleCopy(fatura.linha_digitavel || "", fatura.id)}
+                className={`!flex-1 !flex !items-center !justify-center gap-2 !px-4 !py-2.5 !rounded-xl !font-bold !text-xs transition border ${copiedInvoiceId === fatura.id
+                  ? "!bg-green-500/20 !text-green-400 !border-green-500/30"
+                  : "!bg-white/10 !text-white hover:!bg-white/20 !border-white/10"
+                  }`}
+              >
+                {copiedInvoiceId === fatura.id ? (
+                  <>
+                    <CheckCircle size={16} /> Copiado
+                  </>
+                ) : (
+                  <>
+                    <Copy size={16} /> Copiar Código
+                  </>
+                )}
+              </Button>
+            </>
+          )}
+
+          <Button
+            onClick={() => handleDownloadPdf(fatura.id)}
+            className="!flex-1 md:!flex-none !p-2.5 !bg-neutral-800 !text-gray-400 hover:!text-white !rounded-xl transition border !border-white/5 !flex !items-center !justify-center gap-2"
+            title="Download PDF"
+            disabled={downloadingInvoiceId === fatura.id}
+          >
+            {downloadingInvoiceId === fatura.id ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Download size={18} />
+            )}
+            <span className="md:hidden text-xs font-bold">Baixar PDF</span>
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
 // === MAIN COMPONENT ===
 interface ClientAreaProps {
   onNavigate?: (page: string) => void;
@@ -1302,361 +1475,89 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                     ))}
                   </div>
 
-                  {/* Seletor de Contrato */}
-                  {dashboardData && dashboardData.contratos.length > 1 && (
-                    <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
-                      {dashboardData.contratos.map((c) => (
-                        <button
-                          key={c.id}
-                          onClick={() => setSelectedContractId(c.id)}
-                          className={`flex-shrink-0 px-5 py-3 rounded-2xl border transition-all text-left min-w-[200px] ${selectedContractId === c.id
-                            ? "bg-fiber-blue border-fiber-blue text-white shadow-xl shadow-blue-900/30 ring-2 ring-white/10"
-                            : "bg-neutral-950 border-white/5 text-gray-500 hover:border-white/20 hover:text-gray-300"
-                            }`}
-                        >
-                          <div className="flex justify-between items-start mb-1">
-                            <span className="text-[10px] font-black uppercase tracking-tighter opacity-60">
-                              Contrato #{c.id}
-                            </span>
-                            {c.status === "A" ? (
-                              <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
-                            ) : (
-                              <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                            )}
-                          </div>
-                          <div className="text-xs font-bold truncate">
-                            {c.plano || c.descricao_aux_plano_venda}
-                          </div>
-                          <div className="text-[9px] mt-1 opacity-50 truncate">
-                            {c.endereco}
-                          </div>
-                        </button>
-                      ))}
+                  {/* Listagem Unificada de Faturas */}
+                  <div className="bg-neutral-900 border border-white/10 rounded-[2rem] overflow-hidden shadow-2xl animate-fadeIn">
+                    <div className="bg-white/5 p-6 md:p-8 border-b border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                      <div>
+                        <h3 className="text-xl font-bold text-white">
+                          {invoiceStatusFilter === "aberto" ? "Faturas Pendentes" : "Histórico de Pagamentos"}
+                        </h3>
+                        <p className="text-gray-500 text-xs mt-1 italic">
+                          {invoiceStatusFilter === "aberto"
+                            ? "Listagem de boletos aguardando pagamento ou compensação."
+                            : "Registro de faturas liquidadas e encerradas."}
+                        </p>
+                      </div>
+                      <div className="bg-black/40 px-4 py-2 rounded-xl border border-white/5">
+                        <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-0.5 text-center">Total de Itens</span>
+                        <p className="text-xl font-black text-white text-center">
+                          {(() => {
+                            const faturas = (dashboardData?.faturas || []).filter(f => {
+                              if (f.status === "C") return false;
+                              if (invoiceStatusFilter === "aberto") return f.status === "A";
+                              if (invoiceStatusFilter === "pago") return f.status === "P" || f.status === "R";
+                              return true;
+                            });
+                            const uniqueDates = new Set(faturas.map(f => f.data_vencimento));
+                            return uniqueDates.size;
+                          })()}
+                        </p>
+                      </div>
                     </div>
-                  )}
 
-                  {/* Lista por Contrato */}
-                  {dashboardData?.contratos
-                    .filter(
-                      (c) =>
-                        selectedContractId === null ||
-                        c.id === selectedContractId,
-                    )
-                    .map((contrato) => {
-                      // Robust Mapping for Invoices
-                      const faturasContrato = (
-                        dashboardData?.faturas || []
-                      ).filter((f) => {
-                        const fContratoId = f.contrato_id || f.id_contrato;
-                        const cId = contrato.id;
-                        const matchContrato = String(fContratoId) === String(cId);
+                    <div className="p-4 md:p-8 space-y-4 bg-black/20">
+                      {(() => {
+                        const faturasFiltradas = (dashboardData?.faturas || []).filter(f => {
+                          if (f.status === "C") return false;
+                          if (invoiceStatusFilter === "aberto") return f.status === "A";
+                          if (invoiceStatusFilter === "pago") return f.status === "P" || f.status === "R";
+                          return false;
+                        });
 
-                        if (!matchContrato) return false;
-                        if (f.status === "C") return false;
+                        const faturasUnicas: any[] = [];
+                        const datasVistas = new Set();
 
-                        if (invoiceStatusFilter === "todos") return true;
-                        if (invoiceStatusFilter === "aberto") return f.status === "A";
-                        if (invoiceStatusFilter === "pago") return f.status === "P" || f.status === "R";
+                        [...faturasFiltradas]
+                          .sort((a, b) => {
+                            const dateComp = (b.data_vencimento || "").localeCompare(a.data_vencimento || "");
+                            if (dateComp !== 0) return dateComp;
+                            return a.status === "A" ? -1 : 1;
+                          })
+                          .forEach(f => {
+                            if (!datasVistas.has(f.data_vencimento)) {
+                              faturasUnicas.push(f);
+                              datasVistas.add(f.data_vencimento);
+                            }
+                          });
 
-                        return true;
-                      });
-
-                      const loginAssociado = dashboardData.logins.find(
-                        (l) => String(l.contrato_id) === String(contrato.id)
-                      );
-
-                      return (
-                        <div
-                          key={contrato.id}
-                          className="bg-neutral-900 border border-white/10 rounded-2xl overflow-hidden shadow-sm mb-8 animate-fadeIn"
-                        >
-                          <div className="bg-white/5 p-6 border-b border-white/10">
-                            <div className="flex flex-col lg:flex-row justify-between gap-6">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-3 mb-2">
-                                  <span className="bg-fiber-orange text-white text-[10px] font-black px-2 py-1 rounded uppercase tracking-wider">
-                                    {contrato.plano || contrato.descricao_aux_plano_venda}
-                                  </span>
-                                  <span
-                                    className={`text-[10px] font-bold px-2 py-1 rounded border ${contrato.status === "A"
-                                      ? "border-green-500/30 text-green-400 bg-green-500/10"
-                                      : "border-red-500/30 text-red-400 bg-red-500/10"
-                                      }`}
-                                  >
-                                    {contrato.status === "A"
-                                      ? "ATIVO"
-                                      : "BLOQUEADO"}
-                                  </span>
-                                </div>
-
-                                <div className="text-gray-300 text-sm mb-2 font-medium flex items-center gap-2">
-                                  <MapPin size={14} className="text-gray-500" />
-                                  {contrato.endereco}{contrato.numero ? `, ${contrato.numero}` : ""} {contrato.bairro ? `- ${contrato.bairro}` : ""}
-                                </div>
-
-                                <div className="text-xs text-gray-500 font-mono bg-black/40 px-2 py-1 rounded border border-white/5 inline-block">
-                                  Login de Acesso:{" "}
-                                  <strong className="text-white">
-                                    {loginAssociado?.login || "Não identificado"}
-                                  </strong>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-3">
-                                {contrato.status !== "A" && (
-                                  <Button
-                                    variant="primary"
-                                    className="!bg-amber-600 hover:!bg-amber-700 !py-2.5 !px-5 !text-xs gap-2 shadow-lg shadow-amber-950/20"
-                                    onClick={() =>
-                                      handleUnlockContract(contrato.id)
-                                    }
-                                    disabled={unlockingId === contrato.id}
-                                  >
-                                    {unlockingId === contrato.id ? (
-                                      <Loader2
-                                        size={14}
-                                        className="animate-spin"
-                                      />
-                                    ) : (
-                                      <Unlock size={14} />
-                                    )}
-                                    Desbloqueio em Confiança
-                                  </Button>
-                                )}
-
-                                {dashboardData.termos.some(
-                                  (t) =>
-                                    String(t.id_contrato) ===
-                                    String(contrato.id) && t.status === "P",
-                                ) && (
-                                    <Button
-                                      variant="primary"
-                                      className="!bg-fiber-blue hover:!bg-blue-600 !py-2.5 !px-5 !text-xs gap-2"
-                                      onClick={() => {
-                                        const termo = dashboardData.termos.find(
-                                          (t) =>
-                                            String(t.id_contrato) ===
-                                            String(contrato.id) &&
-                                            t.status === "P",
-                                        );
-                                        if (termo) handleSignContract(termo.id);
-                                      }}
-                                      disabled={isSigning}
-                                    >
-                                      {isSigning ? (
-                                        <Loader2
-                                          size={14}
-                                          className="animate-spin"
-                                        />
-                                      ) : (
-                                        <FileSignature size={14} />
-                                      )}
-                                      Assinar Contrato
-                                    </Button>
-                                  )}
-                              </div>
+                        return faturasUnicas.length > 0 ? (
+                          faturasUnicas.map((fatura) => (
+                            <InvoiceItem
+                              key={fatura.id}
+                              fatura={fatura}
+                              downloadingInvoiceId={downloadingInvoiceId}
+                              loadingPixId={loadingPixId}
+                              copiedInvoiceId={copiedInvoiceId}
+                              handleOpenPixModal={handleOpenPixModal}
+                              handleCopy={handleCopy}
+                              handleDownloadPdf={handleDownloadPdf}
+                              calcularEstimativa={calcularEstimativa}
+                            />
+                          ))
+                        ) : (
+                          <div className="text-center py-20">
+                            <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 opacity-20">
+                              <FileText size={32} className="text-white" />
                             </div>
+                            <p className="text-gray-500 font-bold">Nenhuma fatura encontrada</p>
+                            <p className="text-gray-600 text-xs mt-1 italic">
+                              Não existem registros de faturas {invoiceStatusFilter === "aberto" ? "pendentes" : "pagas"} no momento.
+                            </p>
                           </div>
-
-                          <div className="p-4 space-y-4 bg-black/20">
-                            {faturasContrato.length > 0 ? (
-                              faturasContrato
-                                .sort((a, b) => (b.data_vencimento || "").localeCompare(a.data_vencimento || ""))
-                                .map((fatura) => {
-                                  const valorNum =
-                                    typeof fatura.valor === "string"
-                                      ? parseFloat(fatura.valor.replace(",", "."))
-                                      : Number(fatura.valor);
-
-                                  const estimativa =
-                                    fatura.status === "A"
-                                      ? calcularEstimativa(
-                                        valorNum,
-                                        fatura.data_vencimento,
-                                      )
-                                      : null;
-
-                                  const hoje = new Date();
-                                  hoje.setHours(0, 0, 0, 0);
-
-                                  const dataSegura = fatura.data_vencimento && fatura.data_vencimento.includes("T")
-                                    ? fatura.data_vencimento
-                                    : (fatura.data_vencimento || "") + "T12:00:00";
-
-                                  const venc = new Date(dataSegura);
-                                  venc.setHours(0, 0, 0, 0);
-
-                                  const diffTime =
-                                    venc.getTime() - hoje.getTime();
-                                  const dias = Math.ceil(
-                                    diffTime / (1000 * 60 * 60 * 24),
-                                  );
-
-                                  return (
-                                    <div
-                                      key={fatura.id}
-                                      className={`flex flex-col md:flex-row justify-between items-center bg-neutral-900 p-5 rounded-2xl border-l-4 hover:bg-white/5 transition-all gap-6 ${fatura.status === "A"
-                                        ? "border-fiber-orange"
-                                        : "border-fiber-green"
-                                        }`}
-                                    >
-                                      <div className="flex-1 w-full">
-                                        <div className="flex items-center gap-3 mb-2">
-                                          <p className="text-white font-black text-xl">
-                                            R${" "}
-                                            {valorNum.toLocaleString("pt-BR", {
-                                              minimumFractionDigits: 2,
-                                            })}
-                                          </p>
-                                          {fatura.status === "A" ? (
-                                            dias < 0 ? (
-                                              <span className="bg-red-500/20 text-red-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase border border-red-500/30">
-                                                Atrasada
-                                              </span>
-                                            ) : (
-                                              <span className="bg-amber-500/20 text-amber-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase border border-amber-500/30">
-                                                Pendente
-                                              </span>
-                                            )
-                                          ) : (
-                                            <span className="bg-green-500/20 text-green-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase border border-green-500/30">
-                                              Liquidada
-                                            </span>
-                                          )}
-                                        </div>
-                                        <p className="text-[11px] text-gray-400 uppercase font-black tracking-wider flex items-center gap-1.5">
-                                          <Calendar
-                                            size={12}
-                                            className="text-fiber-orange"
-                                          />{" "}
-                                          Vencimento:{" "}
-                                          {fatura.data_vencimento ? fatura.data_vencimento
-                                            .split("-")
-                                            .reverse()
-                                            .join("/") : "N/A"}
-                                        </p>
-                                        {fatura.status === "A" && (
-                                          <p className="text-xs font-bold mt-1">
-                                            {dias < 0 ? (
-                                              <span className="text-red-400">
-                                                {Math.abs(dias)} dias em atraso
-                                              </span>
-                                            ) : dias === 0 ? (
-                                              <span className="text-yellow-400">
-                                                Vence hoje
-                                              </span>
-                                            ) : (
-                                              <span className="text-fiber-blue">
-                                                Vence em {dias} dias
-                                              </span>
-                                            )}
-                                          </p>
-                                        )}
-
-                                        {estimativa && (
-                                          <div className="mt-3 pt-3 border-t border-white/5">
-                                            <div className="flex flex-wrap gap-4 text-[10px]">
-                                              <span className="text-gray-400">
-                                                Multa (2%):{" "}
-                                                <strong className="text-white">
-                                                  R$ {estimativa.multa.toFixed(2)}
-                                                </strong>
-                                              </span>
-                                              <span className="text-gray-400">
-                                                Juros:{" "}
-                                                <strong className="text-white">
-                                                  R$ {estimativa.juros.toFixed(2)}
-                                                </strong>
-                                              </span>
-                                              <span className="text-fiber-orange font-bold uppercase">
-                                                Total: {estimativa.totalAtualizado}
-                                              </span>
-                                            </div>
-                                          </div>
-                                        )}
-                                      </div>
-
-                                      <div className="flex md:flex-col lg:flex-row gap-2 w-full md:w-auto">
-                                        {fatura.status === "A" && (
-                                          <>
-                                            <Button
-                                              onClick={() =>
-                                                handleOpenPixModal(
-                                                  fatura as unknown as BoletoView,
-                                                )
-                                              }
-                                              disabled={
-                                                loadingPixId === fatura.id
-                                              }
-                                              className="!flex-1 !flex !items-center !justify-center gap-2 !bg-fiber-green text-white !px-4 !py-2.5 !rounded-xl !font-bold !text-xs hover:!bg-green-600 transition shadow-lg shadow-green-900/20"
-                                            >
-                                              {loadingPixId === fatura.id ? (
-                                                <Loader2
-                                                  size={14}
-                                                  className="animate-spin"
-                                                />
-                                              ) : (
-                                                <QrCode size={16} />
-                                              )}
-                                              Pagar via PIX
-                                            </Button>
-
-                                            <Button
-                                              onClick={() =>
-                                                handleCopy(
-                                                  fatura.linha_digitavel || "",
-                                                  fatura.id,
-                                                )
-                                              }
-                                              className={`!flex-1 !flex !items-center !justify-center gap-2 !px-4 !py-2.5 !rounded-xl !font-bold !text-xs transition border ${copiedInvoiceId === fatura.id
-                                                ? "!bg-green-500/20 !text-green-400 !border-green-500/30"
-                                                : "!bg-white/10 !text-white hover:!bg-white/20 !border-white/10"
-                                                }`}
-                                            >
-                                              {copiedInvoiceId === fatura.id ? (
-                                                <>
-                                                  <CheckCircle size={16} />{" "}
-                                                  Copiado
-                                                </>
-                                              ) : (
-                                                <>
-                                                  <Copy size={16} /> Copiar Código
-                                                </>
-                                              )}
-                                            </Button>
-                                          </>
-                                        )}
-
-                                        <Button
-                                          onClick={() =>
-                                            handleDownloadPdf(fatura.id)
-                                          }
-                                          className="!flex-1 md:!flex-none !p-2.5 !bg-neutral-800 !text-gray-400 hover:!text-white !rounded-xl transition border !border-white/5 !flex !items-center !justify-center gap-2"
-                                          title="Download PDF"
-                                          disabled={downloadingInvoiceId === fatura.id}
-                                        >
-                                          {downloadingInvoiceId === fatura.id ? (
-                                            <Loader2 size={18} className="animate-spin" />
-                                          ) : (
-                                            <Download size={18} />
-                                          )}
-                                          <span className="md:hidden text-xs font-bold">
-                                            Baixar PDF
-                                          </span>
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  );
-                                })
-                            ) : (
-                              <p className="text-center text-gray-500 py-6 text-sm italic">
-                                Nenhuma fatura encontrada para os critérios selecionados.
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })()}
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -1780,52 +1681,66 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                     {(dashboardData?.ordensServico || []).length > 0 ? (
                       [...(dashboardData?.ordensServico || [])]
                         .sort((a, b) => (b.data_abertura || "").localeCompare(a.data_abertura || ""))
-                        .map((os) => (
-                          <div
-                            key={os.id}
-                            className="bg-neutral-900/40 border border-white/5 rounded-[2rem] p-6 flex flex-col hover:bg-white/5 transition-all group"
-                          >
-                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                              <div className="flex items-center gap-5 w-full md:w-auto flex-1">
-                                <div className="w-14 h-14 rounded-2xl bg-fiber-orange/10 text-fiber-orange flex items-center justify-center group-hover:scale-110 transition-transform">
-                                  <Wrench size={28} />
-                                </div>
-                                <div className="flex-1">
-                                  <p className="font-bold text-lg text-white group-hover:text-fiber-orange transition-colors">
-                                    {os.assunto_nome || os.assunto || "Serviço Técnico"}
-                                  </p>
-                                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
-                                    <p className="text-[10px] text-gray-500 uppercase font-black tracking-wider">
-                                      Protocolo: <span className="text-gray-400">#{os.protocolo}</span>
+                        .map((os) => {
+                          const contratoRelacionado = dashboardData?.contratos.find(
+                            (c) => String(c.id) === String(os.id_contrato || os.contrato_id)
+                          );
+
+                          return (
+                            <div
+                              key={os.id}
+                              className="bg-neutral-900/40 border border-white/5 rounded-[2rem] p-6 flex flex-col hover:bg-white/5 transition-all group"
+                            >
+                              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                                <div className="flex items-center gap-5 w-full md:w-auto flex-1">
+                                  <div className="w-14 h-14 rounded-2xl bg-fiber-orange/10 text-fiber-orange flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <Wrench size={28} />
+                                  </div>
+                                  <div className="flex-1">
+                                    <p className="font-bold text-lg text-white group-hover:text-fiber-orange transition-colors">
+                                      {os.assunto_nome || os.assunto || "Serviço Técnico"}
                                     </p>
-                                    <p className="text-[10px] text-gray-500 uppercase font-black tracking-wider">
-                                      Data: <span className="text-gray-400">{os.data_abertura ? os.data_abertura.split(" ")[0].split("-").reverse().join("/") : "N/A"}</span>
-                                    </p>
+                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2">
+                                      <p className="text-[10px] text-gray-500 uppercase font-black tracking-wider">
+                                        Protocolo: <span className="text-gray-400">#{os.protocolo}</span>
+                                      </p>
+                                      <p className="text-[10px] text-gray-500 uppercase font-black tracking-wider">
+                                        Data: <span className="text-gray-400">{os.data_abertura ? os.data_abertura.split(" ")[0].split("-").reverse().join("/") : "N/A"}</span>
+                                      </p>
+                                      {contratoRelacionado && (
+                                        <div className="flex items-center gap-1.5 bg-fiber-blue/5 px-2 py-1 rounded-md border border-fiber-blue/10">
+                                          <MapPin size={12} className="text-fiber-blue" />
+                                          <span className="text-[10px] text-gray-300 font-bold uppercase tracking-tight">
+                                            {contratoRelacionado.endereco || `Contrato #${contratoRelacionado.id}`}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                              <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
-                                <span
-                                  className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${os.status === "F"
-                                    ? "bg-fiber-green/10 text-fiber-green border-fiber-green/20"
-                                    : "bg-fiber-orange/10 text-fiber-orange border-fiber-orange/20"
-                                    }`}
-                                >
-                                  {os.status === "F" ? "Realizada" : "Agendada"}
-                                </span>
-                              </div>
-                            </div>
-
-                            {(os.resolucao || os.diagnostico) && (
-                              <div className="mt-6 pt-6 border-t border-white/5">
-                                <p className="text-[10px] font-black text-fiber-orange uppercase tracking-widest mb-2">Relatório do Técnico:</p>
-                                <div className="text-sm text-gray-300 bg-black/20 p-4 rounded-2xl border border-white/5">
-                                  {os.resolucao || os.diagnostico}
+                                <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
+                                  <span
+                                    className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${os.status === "F"
+                                      ? "bg-fiber-green/10 text-fiber-green border-fiber-green/20"
+                                      : "bg-fiber-orange/10 text-fiber-orange border-fiber-orange/20"
+                                      }`}
+                                  >
+                                    {os.status === "F" ? "Realizada" : "Agendada"}
+                                  </span>
                                 </div>
                               </div>
-                            )}
-                          </div>
-                        ))
+
+                              {(os.resolucao || os.diagnostico) && (
+                                <div className="mt-6 pt-6 border-t border-white/5">
+                                  <p className="text-[10px] font-black text-fiber-orange uppercase tracking-widest mb-2">Relatório do Técnico:</p>
+                                  <div className="text-sm text-gray-300 bg-black/20 p-4 rounded-2xl border border-white/5">
+                                    {os.resolucao || os.diagnostico}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
                     ) : (
                       <div className="text-center py-24 bg-neutral-900/30 rounded-[2.5rem] border border-dashed border-white/10">
                         <Wrench size={32} className="text-gray-600 mx-auto mb-4" />
