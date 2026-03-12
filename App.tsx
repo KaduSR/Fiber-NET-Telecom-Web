@@ -97,12 +97,14 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-fiber-dark font-sans text-gray-900 flex flex-col">
-      <Navbar
-        onNavigate={handleNavigate}
-        currentPage={currentPage}
-        onOpenSupport={() => setIsSupportModalOpen(true)}
-        onOpenSegundaVia={() => setIsSegundaViaModalOpen(true)}
-      />
+      {currentPage !== "client-area" && (
+        <Navbar
+          onNavigate={handleNavigate}
+          currentPage={currentPage}
+          onOpenSupport={() => setIsSupportModalOpen(true)}
+          onOpenSegundaVia={() => setIsSegundaViaModalOpen(true)}
+        />
+      )}
 
       <main className="flex-grow">
         {currentPage === "home" && (
@@ -279,7 +281,9 @@ const App: React.FC = () => {
           </>
         )}
 
-        {currentPage === "client-area" && <ClientArea />}
+        {currentPage === "client-area" && (
+          <ClientArea onNavigate={handleNavigate} />
+        )}
 
         <Suspense
           fallback={
@@ -314,12 +318,14 @@ const App: React.FC = () => {
         {currentPage === "news" && <NewsSection />}
       </main>
 
-      <Footer
-        onNavigate={handleNavigate}
-        currentPage={currentPage}
-        onOpenSupport={() => setIsSupportModalOpen(true)}
-        onOpenSegundaVia={() => setIsSegundaViaModalOpen(true)}
-      />
+      {currentPage !== "client-area" && (
+        <Footer
+          onNavigate={handleNavigate}
+          currentPage={currentPage}
+          onOpenSupport={() => setIsSupportModalOpen(true)}
+          onOpenSegundaVia={() => setIsSegundaViaModalOpen(true)}
+        />
+      )}
 
       <SupportModal
         isOpen={isSupportModalOpen}
@@ -333,18 +339,20 @@ const App: React.FC = () => {
         onClose={() => setIsSegundaViaModalOpen(false)}
       />
 
-      <button
-        onClick={() => setIsSupportModalOpen(true)}
-        className="fixed bottom-6 right-6 z-50 bg-fiber-orange text-white p-4 rounded-full shadow-[0_0_20px_rgba(255,107,0,0.5)] hover:scale-110 hover:shadow-[0_0_30px_rgba(255,107,0,0.8)] transition-all duration-300 group"
-        aria-label="Abrir Central de Suporte"
-        title="Central de Suporte"
-      >
-        <Headphones size={32} />
-        <span className="absolute right-full mr-4 top-1/2 -translate-y-1/2 bg-fiber-card text-white text-xs font-bold py-2 px-3 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none border border-white/10 flex items-center">
-          Falar com Suporte
-          <span className="absolute -right-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-fiber-card border-t border-r border-white/10 transform rotate-45"></span>
-        </span>
-      </button>
+      {currentPage !== "client-area" && (
+        <button
+          onClick={() => setIsSupportModalOpen(true)}
+          className="fixed bottom-6 right-6 z-50 bg-fiber-orange text-white p-4 rounded-full shadow-[0_0_20px_rgba(255,107,0,0.5)] hover:scale-110 hover:shadow-[0_0_30px_rgba(255,107,0,0.8)] transition-all duration-300 group"
+          aria-label="Abrir Central de Suporte"
+          title="Central de Suporte"
+        >
+          <Headphones size={32} />
+          <span className="absolute right-full mr-4 top-1/2 -translate-y-1/2 bg-fiber-card text-white text-xs font-bold py-2 px-3 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none border border-white/10 flex items-center">
+            Falar com Suporte
+            <span className="absolute -right-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-fiber-card border-t border-r border-white/10 transform rotate-45"></span>
+          </span>
+        </button>
+      )}
 
       {/* Vercel Speed Insights */}
       <SpeedInsights />

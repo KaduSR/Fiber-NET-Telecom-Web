@@ -144,6 +144,8 @@ class ApiService {
         ...f,
         data_vencimento: f.vencimento || f.data_vencimento,
         status: statusNormalizado,
+        // Garante que o contrato_id esteja presente para o filtro do frontend
+        contrato_id: f.contrato_id || f.id_contrato || (contratos.length === 1 ? contratos[0].id : null),
         // Garante que o valor recebido seja repassado para o frontend calcular
         valor_recebido: f.valor_recebido || f.valor_pago || 0,
         pix_code: f.pix_code || null,
@@ -270,6 +272,12 @@ async getContratoPdf(id: number): Promise<{base64_document: string}>{
     return this.request<any>("/tickets", {
       method: "POST",
       body: JSON.stringify(payload),
+    });
+  }
+
+  async closeTicket(id: number | string): Promise<any> {
+    return this.request<any>(`/tickets/${id}/close`, {
+      method: "POST",
     });
   }
 
