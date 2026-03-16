@@ -27,7 +27,6 @@ import {
   QrCode,
   QrCodeIcon,
   RefreshCw,
-  Router,
   ScrollText,
   Server,
   Settings,
@@ -173,21 +172,19 @@ const ConsumptionChart: React.FC<{ history?: Consumo["history"] }> = ({
           <div className="flex bg-white/5 p-1 rounded-full border border-white/10">
             <button
               onClick={() => setPeriod("daily")}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-                period === "daily"
-                  ? "bg-fiber-orange text-white shadow-lg"
-                  : "text-gray-400 hover:text-white"
-              }`}
+              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${period === "daily"
+                ? "bg-fiber-orange text-white shadow-lg"
+                : "text-gray-400 hover:text-white"
+                }`}
             >
               Diário
             </button>
             <button
               onClick={() => setPeriod("monthly")}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-                period === "monthly"
-                  ? "bg-fiber-orange text-white shadow-lg"
-                  : "text-gray-400 hover:text-white"
-              }`}
+              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${period === "monthly"
+                ? "bg-fiber-orange text-white shadow-lg"
+                : "text-gray-400 hover:text-white"
+                }`}
             >
               Mensal
             </button>
@@ -304,6 +301,179 @@ const ConsumptionChart: React.FC<{ history?: Consumo["history"] }> = ({
     </div>
   );
 };
+
+// === SUB-COMPONENT: INVOICE ITEM ===
+const InvoiceItem: React.FC<{
+  fatura: any;
+  downloadingInvoiceId: number | null;
+  loadingPixId: number | null;
+  copiedInvoiceId: number | null;
+  handleOpenPixModal: (boleto: BoletoView) => void;
+  handleCopy: (text: string, id: number) => void;
+  handleDownloadPdf: (faturaId: number) => void;
+  calcularEstimativa: (valor: number, dataVencimento: string) => any;
+}> = ({
+  fatura,
+  downloadingInvoiceId,
+  loadingPixId,
+  copiedInvoiceId,
+  handleOpenPixModal,
+  handleCopy,
+  handleDownloadPdf,
+  calcularEstimativa,
+}) => {
+    const valorNum =
+      typeof fatura.valor === "string"
+        ? parseFloat(fatura.valor.replace(",", "."))
+        : Number(fatura.valor);
+
+    const estimativa =
+      fatura.status === "A"
+        ? calcularEstimativa(valorNum, fatura.data_vencimento)
+        : null;
+
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    const dataSegura =
+      fatura.data_vencimento && fatura.data_vencimento.includes("T")
+        ? fatura.data_vencimento
+        : (fatura.data_vencimento || "") + "T12:00:00";
+
+    const venc = new Date(dataSegura);
+    venc.setHours(0, 0, 0, 0);
+
+    const diffTime = venc.getTime() - hoje.getTime();
+    const dias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    return (
+      <div
+        key={fatura.id}
+        className={`flex flex-col md:flex-row justify-between items-center bg-neutral-900 p-5 rounded-2xl border-l-4 hover:bg-white/5 transition-all gap-6 ${fatura.status === "A" ? "border-fiber-orange" : "border-fiber-green"
+          }`}
+      >
+        <div className="flex-1 w-full">
+          <div className="flex items-center gap-3 mb-2">
+            <p className="text-white font-black text-xl">
+              R${" "}
+              {valorNum.toLocaleString("pt-BR", {
+                minimumFractionDigits: 2,
+              })}
+            </p>
+            {fatura.status === "A" ? (
+              dias < 0 ? (
+                <span className="bg-red-500/20 text-red-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase border border-red-500/30">
+                  Atrasada
+                </span>
+              ) : (
+                <span className="bg-amber-500/20 text-amber-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase border border-amber-500/30">
+                  Pendente
+                </span>
+              )
+            ) : (
+              <span className="bg-green-500/20 text-green-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase border border-green-500/30">
+                Liquidada
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] text-gray-400 uppercase font-black tracking-wider flex items-center gap-1.5">
+            <Calendar size={12} className="text-fiber-orange" /> Vencimento:{" "}
+            {fatura.data_vencimento
+              ? fatura.data_vencimento.split("-").reverse().join("/")
+              : "N/A"}
+          </p>
+          {fatura.status === "A" && (
+            <p className="text-xs font-bold mt-1">
+              {dias < 0 ? (
+                <span className="text-red-400">
+                  {Math.abs(dias)} dias em atraso
+                </span>
+              ) : dias === 0 ? (
+                <span className="text-yellow-400">Vence hoje</span>
+              ) : (
+                <span className="text-fiber-blue">Vence em {dias} dias</span>
+              )}
+            </p>
+          )}
+
+          {estimativa && (
+            <div className="mt-3 pt-3 border-t border-white/5">
+              <div className="flex flex-wrap gap-4 text-[10px]">
+                <span className="text-gray-400">
+                  Multa (2%):{" "}
+                  <strong className="text-white">
+                    R$ {estimativa.multa.toFixed(2)}
+                  </strong>
+                </span>
+                <span className="text-gray-400">
+                  Juros:{" "}
+                  <strong className="text-white">
+                    R$ {estimativa.juros.toFixed(2)}
+                  </strong>
+                </span>
+                <span className="text-fiber-orange font-bold uppercase">
+                  Total: {estimativa.totalAtualizado}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex md:flex-col lg:flex-row gap-2 w-full md:w-auto">
+          {fatura.status === "A" && (
+            <>
+              <Button
+                onClick={() =>
+                  handleOpenPixModal(fatura as unknown as BoletoView)
+                }
+                disabled={loadingPixId === fatura.id}
+                className="!flex-1 !flex !items-center !justify-center gap-2 !bg-fiber-green text-white !px-4 !py-2.5 !rounded-xl !font-bold !text-xs hover:!bg-green-600 transition shadow-lg shadow-green-900/20"
+              >
+                {loadingPixId === fatura.id ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <QrCode size={16} />
+                )}
+                Pagar via PIX
+              </Button>
+
+              <Button
+                onClick={() => handleCopy(fatura.linha_digitavel || "", fatura.id)}
+                className={`!flex-1 !flex !items-center !justify-center gap-2 !px-4 !py-2.5 !rounded-xl !font-bold !text-xs transition border ${copiedInvoiceId === fatura.id
+                  ? "!bg-green-500/20 !text-green-400 !border-green-500/30"
+                  : "!bg-white/10 !text-white hover:!bg-white/20 !border-white/10"
+                  }`}
+              >
+                {copiedInvoiceId === fatura.id ? (
+                  <>
+                    <CheckCircle size={16} /> Copiado
+                  </>
+                ) : (
+                  <>
+                    <Copy size={16} /> Copiar Código
+                  </>
+                )}
+              </Button>
+            </>
+          )}
+
+          <Button
+            onClick={() => handleDownloadPdf(fatura.id)}
+            className="!flex-1 md:!flex-none !p-2.5 !bg-neutral-800 !text-gray-400 hover:!text-white !rounded-xl transition border !border-white/5 !flex !items-center !justify-center gap-2"
+            title="Download PDF"
+            disabled={downloadingInvoiceId === fatura.id}
+          >
+            {downloadingInvoiceId === fatura.id ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Download size={18} />
+            )}
+            <span className="md:hidden text-xs font-bold">Baixar PDF</span>
+          </Button>
+        </div>
+      </div>
+    );
+  };
 
 // === MAIN COMPONENT ===
 interface ClientAreaProps {
@@ -464,7 +634,7 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
       const response = await apiService.unlockContract(idContrato);
       alert(
         response.message ||
-          "Desbloqueio processado com sucesso! Por favor, aguarde alguns instantes e, se necessário, reinicie seu equipamento.",
+        "Desbloqueio processado com sucesso! Por favor, aguarde alguns instantes e, se necessário, reinicie seu equipamento.",
       );
       fetchDashboardData();
     } catch (error: any) {
@@ -605,7 +775,7 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
         }
       }
     }
-    
+
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -734,7 +904,7 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
     setDownloadingContractId(id);
     try {
       const data = await apiService.getContratoPdf(id);
-      handlePdfBase64 (data.base64_document, `contrato-fiber-${id}.pdf`, 'view');
+      handlePdfBase64(data.base64_document, `contrato-fiber-${id}.pdf`, 'view');
     } catch (error) {
       console.error("Erro ao baixar contrato:", error);
       alert("Não foi possível realizar o download do contrato agora. Por favor, tente novamente em alguns minutos.");
@@ -986,7 +1156,7 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
   return (
     <div className="min-h-screen bg-fiber-dark py-8 md:py-12 animate-fadeIn overflow-x-hidden">
       <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* === ALERTA DE DÉBITOS === */}
         {totalGeralDivida > 0 && (
           <div className="sticky top-4 z-50 mb-10 bg-gradient-to-r from-red-600/95 to-red-700/95 backdrop-blur-md text-white p-6 md:p-8 rounded-3xl shadow-2xl flex flex-col md:flex-row justify-between items-center gap-6 border border-white/20 animate-fadeIn">
@@ -1028,27 +1198,25 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                   {dashboardData?.clientes[0]?.nome?.split(" ")[0]}
                 </h2>
               </div>
-              
+
               <div className="space-y-1">
                 <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] px-3 mb-2">Menu Principal</p>
                 {TABS.map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center justify-between gap-4 p-4 rounded-2xl text-left transition-all font-bold text-sm group ${
-                      activeTab === tab.id
-                        ? "bg-fiber-orange text-white shadow-[0_10px_20px_rgba(255,107,0,0.3)] scale-[1.02]"
-                        : "text-gray-400 hover:bg-white/5 hover:text-white"
-                    }`}
+                    className={`w-full flex items-center justify-between gap-4 p-4 rounded-2xl text-left transition-all font-bold text-sm group ${activeTab === tab.id
+                      ? "bg-fiber-orange text-white shadow-[0_10px_20px_rgba(255,107,0,0.3)] scale-[1.02]"
+                      : "text-gray-400 hover:bg-white/5 hover:text-white"
+                      }`}
                   >
                     <div className="flex items-center gap-4">
-                      <tab.icon size={22} className={activeTab === tab.id ? "text-white" : "text-gray-500 group-hover:text-fiber-orange transition-colors"} /> 
+                      <tab.icon size={22} className={activeTab === tab.id ? "text-white" : "text-gray-500 group-hover:text-fiber-orange transition-colors"} />
                       {tab.label}
                     </div>
                     {tab.badge && tab.badge > 0 && (
-                      <span className={`text-[11px] font-black px-2.5 py-1 rounded-full shadow-inner ${
-                        activeTab === tab.id ? "bg-white text-fiber-orange" : "bg-fiber-orange text-white"
-                      }`}>
+                      <span className={`text-[11px] font-black px-2.5 py-1 rounded-full shadow-inner ${activeTab === tab.id ? "bg-white text-fiber-orange" : "bg-fiber-orange text-white"
+                        }`}>
                         {tab.badge}
                       </span>
                     )}
@@ -1057,7 +1225,7 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
               </div>
 
               <div className="pt-4 mt-4 border-t border-white/5 space-y-2">
-                <button 
+                <button
                   onClick={fetchDashboardData}
                   disabled={isRefetching}
                   className="w-full flex items-center gap-4 p-4 rounded-2xl text-left text-gray-400 hover:bg-white/5 hover:text-white transition-all font-bold text-sm"
@@ -1065,7 +1233,7 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                   <RefreshCw size={22} className={isRefetching ? "animate-spin text-fiber-orange" : "text-gray-500"} />
                   Atualizar Dados
                 </button>
-                <button 
+                <button
                   onClick={handleLogout}
                   className="w-full flex items-center gap-4 p-4 rounded-2xl text-left text-red-400 hover:bg-red-500/10 transition-all font-bold text-sm"
                 >
@@ -1076,13 +1244,13 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
             </div>
 
             <div className="bg-neutral-900/50 border border-white/5 rounded-3xl p-6 hidden lg:block">
-               <div className="flex items-center gap-3 mb-4">
-                  <div className="w-2 h-2 rounded-full bg-fiber-green animate-pulse"></div>
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Sistemas OK</span>
-               </div>
-               <p className="text-[11px] text-gray-500 leading-relaxed">
-                  Todos os serviços da Fiber.Net estão operando normalmente.
-               </p>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-2 h-2 rounded-full bg-fiber-green animate-pulse"></div>
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Sistemas OK</span>
+              </div>
+              <p className="text-[11px] text-gray-500 leading-relaxed">
+                Todos os serviços da Fiber.Net estão operando normalmente.
+              </p>
             </div>
           </aside>
 
@@ -1094,18 +1262,17 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-3 px-6 py-3 rounded-2xl text-xs font-black transition-all ${
-                    activeTab === tab.id
-                      ? "bg-fiber-orange text-white shadow-lg"
-                      : "bg-neutral-900 text-gray-500"
-                  }`}
+                  className={`flex items-center gap-3 px-6 py-3 rounded-2xl text-xs font-black transition-all ${activeTab === tab.id
+                    ? "bg-fiber-orange text-white shadow-lg"
+                    : "bg-neutral-900 text-gray-500"
+                    }`}
                 >
                   <tab.icon size={16} /> {tab.label}
                 </button>
               ))}
             </div>
 
-            <div 
+            <div
               key={activeTab}
               className="bg-fiber-card border border-white/10 rounded-[2.5rem] p-6 md:p-12 min-h-[600px] animate-fadeIn shadow-2xl relative z-0"
             >
@@ -1127,7 +1294,7 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
 
                   {/* GRID PRINCIPAL DE CARDS */}
                   <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-4 gap-6">
-                    
+
                     {/* CARD MEU PLANO */}
                     <div className="bg-neutral-900/50 border border-white/10 rounded-[2rem] p-8 flex flex-col justify-between hover:border-fiber-blue/30 transition-all group shadow-xl">
                       <div>
@@ -1140,7 +1307,7 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                         <h3 className="text-gray-400 text-xs font-black uppercase tracking-[0.2em] mb-2">Plano Atual</h3>
                         <p className="text-xl font-bold text-white mb-4 truncate">{dashboardData.contratos[0]?.plano || "Internet Fibra Óptica"}</p>
                       </div>
-                      <button 
+                      <button
                         onClick={() => setActiveTab("connections")}
                         className="mt-8 flex items-center gap-2 text-fiber-blue font-bold text-sm hover:gap-3 transition-all"
                       >
@@ -1164,7 +1331,7 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                         <h3 className="text-gray-400 text-xs font-black uppercase tracking-[0.2em] mb-2">Financeiro</h3>
                         <p className="text-xl font-bold text-white mb-4">Gestão de Faturas</p>
                       </div>
-                      <button 
+                      <button
                         onClick={() => setActiveTab("invoices")}
                         className="mt-8 flex items-center gap-2 text-fiber-orange font-bold text-sm hover:gap-3 transition-all"
                       >
@@ -1184,7 +1351,7 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                         <h3 className="text-gray-400 text-xs font-black uppercase tracking-[0.2em] mb-2">Atendimento</h3>
                         <p className="text-xl font-bold text-white mb-4">Chamados</p>
                       </div>
-                      <button 
+                      <button
                         onClick={() => setActiveTab("tickets")}
                         className="mt-8 flex items-center gap-2 text-white font-bold text-sm hover:gap-3 transition-all"
                       >
@@ -1204,7 +1371,7 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                         <h3 className="text-gray-400 text-xs font-black uppercase tracking-[0.2em] mb-2">Visitas Técnicas</h3>
                         <p className="text-xl font-bold text-white mb-4">Serviços</p>
                       </div>
-                      <button 
+                      <button
                         onClick={() => setActiveTab("service_orders")}
                         className="mt-8 flex items-center gap-2 text-fiber-orange font-bold text-sm hover:gap-3 transition-all"
                       >
@@ -1222,12 +1389,12 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                       </h3>
                       <button onClick={() => setActiveTab("invoices")} className="text-xs font-black text-gray-500 hover:text-white uppercase tracking-widest transition-colors">VER HISTÓRICO COMPLETO</button>
                     </div>
-                    
+
                     <div className="space-y-4">
                       {(() => {
                         const faturasUnicas: any[] = [];
                         const datasVistas = new Set();
-                        
+
                         [...(dashboardData.faturas || [])]
                           .filter(f => f.status !== "C") // Remove canceladas
                           .sort((a, b) => {
@@ -1261,7 +1428,7 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                                   {fatura.status === "P" ? "Liquidada" : "Pendente"}
                                 </span>
                                 {fatura.status !== "P" && (
-                                  <button 
+                                  <button
                                     onClick={() => handleOpenPixModal(fatura as unknown as BoletoView)}
                                     className="p-2 bg-fiber-green text-white rounded-lg hover:bg-green-600 transition-colors shadow-lg shadow-green-950/20"
                                     title="Pagar agora"
@@ -1296,11 +1463,10 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                       <button
                         key={s}
                         onClick={() => setInvoiceStatusFilter(s)}
-                        className={`px-4 py-2 text-xs font-bold uppercase rounded-lg transition-all ${
-                          invoiceStatusFilter === s
-                            ? "bg-fiber-orange text-white shadow-lg"
-                            : "bg-transparent text-gray-500 hover:text-gray-300"
-                        }`}
+                        className={`px-4 py-2 text-xs font-bold uppercase rounded-lg transition-all ${invoiceStatusFilter === s
+                          ? "bg-fiber-orange text-white shadow-lg"
+                          : "bg-transparent text-gray-500 hover:text-gray-300"
+                          }`}
                       >
                         {s === "aberto"
                           ? "Pendentes"
@@ -1309,365 +1475,89 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                     ))}
                   </div>
 
-                  {/* Seletor de Contrato */}
-                  {dashboardData && dashboardData.contratos.length > 1 && (
-                    <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
-                      {dashboardData.contratos.map((c) => (
-                        <button
-                          key={c.id}
-                          onClick={() => setSelectedContractId(c.id)}
-                          className={`flex-shrink-0 px-5 py-3 rounded-2xl border transition-all text-left min-w-[200px] ${
-                            selectedContractId === c.id
-                              ? "bg-fiber-blue border-fiber-blue text-white shadow-xl shadow-blue-900/30 ring-2 ring-white/10"
-                              : "bg-neutral-950 border-white/5 text-gray-500 hover:border-white/20 hover:text-gray-300"
-                          }`}
-                        >
-                          <div className="flex justify-between items-start mb-1">
-                            <span className="text-[10px] font-black uppercase tracking-tighter opacity-60">
-                              Contrato #{c.id}
-                            </span>
-                            {c.status === "A" ? (
-                              <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
-                            ) : (
-                              <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                            )}
-                          </div>
-                          <div className="text-xs font-bold truncate">
-                            {c.plano || c.descricao_aux_plano_venda}
-                          </div>
-                          <div className="text-[9px] mt-1 opacity-50 truncate">
-                            {c.endereco}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Lista por Contrato */}
-                  {dashboardData?.contratos
-                    .filter(
-                      (c) =>
-                        selectedContractId === null ||
-                        c.id === selectedContractId,
-                    )
-                    .map((contrato) => {
-                      // Robust Mapping for Invoices
-                      const faturasContrato = (
-                        dashboardData?.faturas || []
-                      ).filter((f) => {
-                        const fContratoId = f.contrato_id || f.id_contrato;
-                        const cId = contrato.id || contrato.id_contrato;
-                        const matchContrato = String(fContratoId) === String(cId);
-                        
-                        if (!matchContrato) return false;
-                        if (f.status === "C") return false;
-
-                        if (invoiceStatusFilter === "todos") return true;
-                        if (invoiceStatusFilter === "aberto") return f.status === "A";
-                        if (invoiceStatusFilter === "pago") return f.status === "P" || f.status === "R";
-                        
-                        return true;
-                      });
-
-                    const loginAssociado = dashboardData.logins.find(
-                      (l) => String(l.contrato_id) === String(contrato.id)
-                    );
-
-                    return (
-                      <div
-                        key={contrato.id}
-                        className="bg-neutral-900 border border-white/10 rounded-2xl overflow-hidden shadow-sm mb-8 animate-fadeIn"
-                      >
-                        <div className="bg-white/5 p-6 border-b border-white/10">
-                          <div className="flex flex-col lg:flex-row justify-between gap-6">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
-                                <span className="bg-fiber-orange text-white text-[10px] font-black px-2 py-1 rounded uppercase tracking-wider">
-                                  {contrato.plano || contrato.descricao_aux_plano_venda}
-                                </span>
-                                <span
-                                  className={`text-[10px] font-bold px-2 py-1 rounded border ${
-                                    contrato.status === "A"
-                                      ? "border-green-500/30 text-green-400 bg-green-500/10"
-                                      : "border-red-500/30 text-red-400 bg-red-500/10"
-                                  }`}
-                                >
-                                  {contrato.status === "A"
-                                    ? "ATIVO"
-                                    : "BLOQUEADO"}
-                                </span>
-                              </div>
-
-                              <div className="text-gray-300 text-sm mb-2 font-medium flex items-center gap-2">
-                                <MapPin size={14} className="text-gray-500" />
-                                {contrato.endereco}{contrato.numero ? `, ${contrato.numero}` : ""} {contrato.bairro ? `- ${contrato.bairro}` : ""}
-                              </div>
-
-                              <div className="text-xs text-gray-500 font-mono bg-black/40 px-2 py-1 rounded border border-white/5 inline-block">
-                                Login de Acesso:{" "}
-                                <strong className="text-white">
-                                  {loginAssociado?.login || "Não identificado"}
-                                </strong>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                              {contrato.status !== "A" && (
-                                <Button
-                                  variant="primary"
-                                  className="!bg-amber-600 hover:!bg-amber-700 !py-2.5 !px-5 !text-xs gap-2 shadow-lg shadow-amber-950/20"
-                                  onClick={() =>
-                                    handleUnlockContract(contrato.id)
-                                  }
-                                  disabled={unlockingId === contrato.id}
-                                >
-                                  {unlockingId === contrato.id ? (
-                                    <Loader2
-                                      size={14}
-                                      className="animate-spin"
-                                    />
-                                  ) : (
-                                    <Unlock size={14} />
-                                  )}
-                                  Desbloqueio em Confiança
-                                </Button>
-                              )}
-
-                              {dashboardData.termos.some(
-                                (t) =>
-                                  String(t.id_contrato) ===
-                                    String(contrato.id) && t.status === "P",
-                              ) && (
-                                <Button
-                                  variant="primary"
-                                  className="!bg-fiber-blue hover:!bg-blue-600 !py-2.5 !px-5 !text-xs gap-2"
-                                  onClick={() => {
-                                    const termo = dashboardData.termos.find(
-                                      (t) =>
-                                        String(t.id_contrato) ===
-                                          String(contrato.id) &&
-                                        t.status === "P",
-                                    );
-                                    if (termo) handleSignContract(termo.id);
-                                  }}
-                                  disabled={isSigning}
-                                >
-                                  {isSigning ? (
-                                    <Loader2
-                                      size={14}
-                                      className="animate-spin"
-                                    />
-                                  ) : (
-                                    <FileSignature size={14} />
-                                  )}
-                                  Assinar Contrato
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="p-4 space-y-4 bg-black/20">
-                          {faturasContrato.length > 0 ? (
-                            faturasContrato
-                              .sort((a, b) => (b.data_vencimento || "").localeCompare(a.data_vencimento || ""))
-                              .map((fatura) => {
-                                const valorNum =
-                                  typeof fatura.valor === "string"
-                                    ? parseFloat(fatura.valor.replace(",", "."))
-                                    : Number(fatura.valor);
-
-                                const estimativa =
-                                  fatura.status === "A"
-                                    ? calcularEstimativa(
-                                        valorNum,
-                                        fatura.data_vencimento,
-                                      )
-                                    : null;
-
-                                const hoje = new Date();
-                                hoje.setHours(0, 0, 0, 0);
-
-                                const dataSegura = fatura.data_vencimento && fatura.data_vencimento.includes("T")
-                                  ? fatura.data_vencimento
-                                  : (fatura.data_vencimento || "") + "T12:00:00";
-
-                                const venc = new Date(dataSegura);
-                                venc.setHours(0, 0, 0, 0);
-
-                                const diffTime =
-                                  venc.getTime() - hoje.getTime();
-                                const dias = Math.ceil(
-                                  diffTime / (1000 * 60 * 60 * 24),
-                                );
-
-                                return (
-                                  <div
-                                    key={fatura.id}
-                                    className={`flex flex-col md:flex-row justify-between items-center bg-neutral-900 p-5 rounded-2xl border-l-4 hover:bg-white/5 transition-all gap-6 ${
-                                      fatura.status === "A"
-                                        ? "border-fiber-orange"
-                                        : "border-fiber-green"
-                                    }`}
-                                  >
-                                    <div className="flex-1 w-full">
-                                      <div className="flex items-center gap-3 mb-2">
-                                        <p className="text-white font-black text-xl">
-                                          R${" "}
-                                          {valorNum.toLocaleString("pt-BR", {
-                                            minimumFractionDigits: 2,
-                                          })}
-                                        </p>
-                                        {fatura.status === "A" ? (
-                                          dias < 0 ? (
-                                            <span className="bg-red-500/20 text-red-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase border border-red-500/30">
-                                              Atrasada
-                                            </span>
-                                          ) : (
-                                            <span className="bg-amber-500/20 text-amber-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase border border-amber-500/30">
-                                              Pendente
-                                            </span>
-                                          )
-                                        ) : (
-                                          <span className="bg-green-500/20 text-green-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase border border-green-500/30">
-                                            Liquidada
-                                          </span>
-                                        )}
-                                      </div>
-                                      <p className="text-[11px] text-gray-400 uppercase font-black tracking-wider flex items-center gap-1.5">
-                                        <Calendar
-                                          size={12}
-                                          className="text-fiber-orange"
-                                        />{" "}
-                                        Vencimento:{" "}
-                                        {fatura.data_vencimento ? fatura.data_vencimento
-                                          .split("-")
-                                          .reverse()
-                                          .join("/") : "N/A"}
-                                      </p>
-                                      {fatura.status === "A" && (
-                                        <p className="text-xs font-bold mt-1">
-                                          {dias < 0 ? (
-                                            <span className="text-red-400">
-                                              {Math.abs(dias)} dias em atraso
-                                            </span>
-                                          ) : dias === 0 ? (
-                                            <span className="text-yellow-400">
-                                              Vence hoje
-                                            </span>
-                                          ) : (
-                                            <span className="text-fiber-blue">
-                                              Vence em {dias} dias
-                                            </span>
-                                          )}
-                                        </p>
-                                      )}
-
-                                      {estimativa && (
-                                        <div className="mt-3 pt-3 border-t border-white/5">
-                                          <div className="flex flex-wrap gap-4 text-[10px]">
-                                            <span className="text-gray-400">
-                                              Multa (2%):{" "}
-                                              <strong className="text-white">
-                                                R$ {estimativa.multa.toFixed(2)}
-                                              </strong>
-                                            </span>
-                                            <span className="text-gray-400">
-                                              Juros:{" "}
-                                              <strong className="text-white">
-                                                R$ {estimativa.juros.toFixed(2)}
-                                              </strong>
-                                            </span>
-                                            <span className="text-fiber-orange font-bold uppercase">
-                                              Total: {estimativa.totalAtualizado}
-                                            </span>
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    <div className="flex md:flex-col lg:flex-row gap-2 w-full md:w-auto">
-                                      {fatura.status === "A" && (
-                                        <>
-                                          <Button
-                                            onClick={() =>
-                                              handleOpenPixModal(
-                                                fatura as unknown as BoletoView,
-                                              )
-                                            }
-                                            disabled={
-                                              loadingPixId === fatura.id
-                                            }
-                                            className="!flex-1 !flex !items-center !justify-center gap-2 !bg-fiber-green text-white !px-4 !py-2.5 !rounded-xl !font-bold !text-xs hover:!bg-green-600 transition shadow-lg shadow-green-900/20"
-                                          >
-                                            {loadingPixId === fatura.id ? (
-                                              <Loader2
-                                                size={14}
-                                                className="animate-spin"
-                                              />
-                                            ) : (
-                                              <QrCode size={16} />
-                                            )}
-                                            Pagar via PIX
-                                          </Button>
-
-                                          <Button
-                                            onClick={() =>
-                                              handleCopy(
-                                                fatura.linha_digitavel || "",
-                                                fatura.id,
-                                              )
-                                            }
-                                            className={`!flex-1 !flex !items-center !justify-center gap-2 !px-4 !py-2.5 !rounded-xl !font-bold !text-xs transition border ${
-                                              copiedInvoiceId === fatura.id
-                                                ? "!bg-green-500/20 !text-green-400 !border-green-500/30"
-                                                : "!bg-white/10 !text-white hover:!bg-white/20 !border-white/10"
-                                            }`}
-                                          >
-                                            {copiedInvoiceId === fatura.id ? (
-                                              <>
-                                                <CheckCircle size={16} />{" "}
-                                                Copiado
-                                              </>
-                                            ) : (
-                                              <>
-                                                <Copy size={16} /> Copiar Código
-                                              </>
-                                            )}
-                                          </Button>
-                                        </>
-                                      )}
-
-                                      <Button
-                                        onClick={() =>
-                                          handleDownloadPdf(fatura.id)
-                                        }
-                                        className="!flex-1 md:!flex-none !p-2.5 !bg-neutral-800 !text-gray-400 hover:!text-white !rounded-xl transition border !border-white/5 !flex !items-center !justify-center gap-2"
-                                        title="Download PDF"
-                                        disabled={downloadingInvoiceId === fatura.id}
-                                      >
-                                        {downloadingInvoiceId === fatura.id ? (
-                                          <Loader2 size={18} className="animate-spin" />
-                                        ) : (
-                                          <Download size={18} />
-                                        )}
-                                        <span className="md:hidden text-xs font-bold">
-                                          Baixar PDF
-                                        </span>
-                                      </Button>
-                                    </div>
-                                  </div>
-                                );
-                              })
-                          ) : (
-                            <p className="text-center text-gray-500 py-6 text-sm italic">
-                              Nenhuma fatura encontrada para os critérios selecionados.
-                            </p>
-                          )}
-                        </div>
+                  {/* Listagem Unificada de Faturas */}
+                  <div className="bg-neutral-900 border border-white/10 rounded-[2rem] overflow-hidden shadow-2xl animate-fadeIn">
+                    <div className="bg-white/5 p-6 md:p-8 border-b border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                      <div>
+                        <h3 className="text-xl font-bold text-white">
+                          {invoiceStatusFilter === "aberto" ? "Faturas Pendentes" : "Histórico de Pagamentos"}
+                        </h3>
+                        <p className="text-gray-500 text-xs mt-1 italic">
+                          {invoiceStatusFilter === "aberto"
+                            ? "Listagem de boletos aguardando pagamento ou compensação."
+                            : "Registro de faturas liquidadas e encerradas."}
+                        </p>
                       </div>
-                    );
-                  })}
+                      <div className="bg-black/40 px-4 py-2 rounded-xl border border-white/5">
+                        <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-0.5 text-center">Total de Itens</span>
+                        <p className="text-xl font-black text-white text-center">
+                          {(() => {
+                            const faturas = (dashboardData?.faturas || []).filter(f => {
+                              if (f.status === "C") return false;
+                              if (invoiceStatusFilter === "aberto") return f.status === "A";
+                              if (invoiceStatusFilter === "pago") return f.status === "P" || f.status === "R";
+                              return true;
+                            });
+                            const uniqueDates = new Set(faturas.map(f => f.data_vencimento));
+                            return uniqueDates.size;
+                          })()}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="p-4 md:p-8 space-y-4 bg-black/20">
+                      {(() => {
+                        const faturasFiltradas = (dashboardData?.faturas || []).filter(f => {
+                          if (f.status === "C") return false;
+                          if (invoiceStatusFilter === "aberto") return f.status === "A";
+                          if (invoiceStatusFilter === "pago") return f.status === "P" || f.status === "R";
+                          return false;
+                        });
+
+                        const faturasUnicas: any[] = [];
+                        const datasVistas = new Set();
+
+                        [...faturasFiltradas]
+                          .sort((a, b) => {
+                            const dateComp = (b.data_vencimento || "").localeCompare(a.data_vencimento || "");
+                            if (dateComp !== 0) return dateComp;
+                            return a.status === "A" ? -1 : 1;
+                          })
+                          .forEach(f => {
+                            if (!datasVistas.has(f.data_vencimento)) {
+                              faturasUnicas.push(f);
+                              datasVistas.add(f.data_vencimento);
+                            }
+                          });
+
+                        return faturasUnicas.length > 0 ? (
+                          faturasUnicas.map((fatura) => (
+                            <InvoiceItem
+                              key={fatura.id}
+                              fatura={fatura}
+                              downloadingInvoiceId={downloadingInvoiceId}
+                              loadingPixId={loadingPixId}
+                              copiedInvoiceId={copiedInvoiceId}
+                              handleOpenPixModal={handleOpenPixModal}
+                              handleCopy={handleCopy}
+                              handleDownloadPdf={handleDownloadPdf}
+                              calcularEstimativa={calcularEstimativa}
+                            />
+                          ))
+                        ) : (
+                          <div className="text-center py-20">
+                            <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 opacity-20">
+                              <FileText size={32} className="text-white" />
+                            </div>
+                            <p className="text-gray-500 font-bold">Nenhuma fatura encontrada</p>
+                            <p className="text-gray-600 text-xs mt-1 italic">
+                              Não existem registros de faturas {invoiceStatusFilter === "aberto" ? "pendentes" : "pagas"} no momento.
+                            </p>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -1699,73 +1589,72 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                       [...(dashboardData?.tickets || [])]
                         .sort((a, b) => (b.data_abertura || "").localeCompare(a.data_abertura || ""))
                         .map((ticket) => (
-                        <div
-                          key={ticket.id}
-                          className="bg-neutral-900/40 border border-white/5 rounded-[2rem] p-6 flex flex-col hover:bg-white/5 transition-all group"
-                        >
-                          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                            <div className="flex items-center gap-5 w-full md:w-auto flex-1">
-                              <div className="w-14 h-14 rounded-2xl bg-fiber-blue/10 text-fiber-blue flex items-center justify-center group-hover:scale-110 transition-transform">
-                                <MessageSquare size={28} />
-                              </div>
-                              <div className="flex-1">
-                                <p className="font-bold text-lg text-white group-hover:text-fiber-blue transition-colors">
-                                  {ticket.assunto_nome || ticket.assunto}
-                                </p>
-                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
-                                  <p className="text-[10px] text-gray-500 uppercase font-black tracking-wider">
-                                    Protocolo: <span className="text-gray-400">#{ticket.protocolo}</span>
-                                  </p>
-                                  <p className="text-[10px] text-gray-500 uppercase font-black tracking-wider">
-                                    Data: <span className="text-gray-400">{ticket.data_abertura ? ticket.data_abertura.split(" ")[0].split("-").reverse().join("/") : "N/A"}</span>
-                                  </p>
+                          <div
+                            key={ticket.id}
+                            className="bg-neutral-900/40 border border-white/5 rounded-[2rem] p-6 flex flex-col hover:bg-white/5 transition-all group"
+                          >
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                              <div className="flex items-center gap-5 w-full md:w-auto flex-1">
+                                <div className="w-14 h-14 rounded-2xl bg-fiber-blue/10 text-fiber-blue flex items-center justify-center group-hover:scale-110 transition-transform">
+                                  <MessageSquare size={28} />
                                 </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
-                              <span
-                                className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
-                                  ticket.status === "F"
-                                    ? "bg-fiber-green/10 text-fiber-green border-fiber-green/20"
-                                    : "bg-fiber-orange/10 text-fiber-orange border-fiber-orange/20"
-                                }`}
-                              >
-                                {ticket.status === "F" ? "Concluído" : "Aberto"}
-                              </span>
-                              {ticket.status !== "F" && (
-                                <Button
-                                  variant="outline"
-                                  className="!py-1.5 !px-3 !text-[10px] !rounded-full border-red-500/20 text-red-400 hover:bg-red-500/10"
-                                  onClick={() => handleCloseTicket(ticket.id)}
-                                >
-                                  Finalizar Atendimento
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {(ticket.resolucao || ticket.mensagem) && (
-                            <div className="mt-6 pt-6 border-t border-white/5 space-y-4">
-                              {ticket.mensagem && (
-                                <div>
-                                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Sua Solicitação:</p>
-                                  <p className="text-sm text-gray-300 bg-black/20 p-4 rounded-2xl italic">
-                                    "{ticket.mensagem}"
+                                <div className="flex-1">
+                                  <p className="font-bold text-lg text-white group-hover:text-fiber-blue transition-colors">
+                                    {ticket.assunto_nome || ticket.assunto}
                                   </p>
-                                </div>
-                              )}
-                              {ticket.resolucao && (
-                                <div>
-                                  <p className="text-[10px] font-black text-fiber-green uppercase tracking-widest mb-2">Resolução Técnica:</p>
-                                  <div className="text-sm text-fiber-green/90 bg-fiber-green/5 p-4 rounded-2xl border border-fiber-green/10">
-                                    {ticket.resolucao}
+                                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
+                                    <p className="text-[10px] text-gray-500 uppercase font-black tracking-wider">
+                                      Protocolo: <span className="text-gray-400">#{ticket.protocolo}</span>
+                                    </p>
+                                    <p className="text-[10px] text-gray-500 uppercase font-black tracking-wider">
+                                      Data: <span className="text-gray-400">{ticket.data_abertura ? ticket.data_abertura.split(" ")[0].split("-").reverse().join("/") : "N/A"}</span>
+                                    </p>
                                   </div>
                                 </div>
-                              )}
+                              </div>
+                              <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
+                                <span
+                                  className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${ticket.status === "F"
+                                    ? "bg-fiber-green/10 text-fiber-green border-fiber-green/20"
+                                    : "bg-fiber-orange/10 text-fiber-orange border-fiber-orange/20"
+                                    }`}
+                                >
+                                  {ticket.status === "F" ? "Concluído" : "Aberto"}
+                                </span>
+                                {ticket.status !== "F" && (
+                                  <Button
+                                    variant="outline"
+                                    className="!py-1.5 !px-3 !text-[10px] !rounded-full border-red-500/20 text-red-400 hover:bg-red-500/10"
+                                    onClick={() => handleCloseTicket(Number(ticket.id))}
+                                  >
+                                    Finalizar Atendimento
+                                  </Button>
+                                )}
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      ))
+
+                            {(ticket.resolucao || ticket.mensagem) && (
+                              <div className="mt-6 pt-6 border-t border-white/5 space-y-4">
+                                {ticket.mensagem && (
+                                  <div>
+                                    <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Sua Solicitação:</p>
+                                    <p className="text-sm text-gray-300 bg-black/20 p-4 rounded-2xl italic">
+                                      "{ticket.mensagem}"
+                                    </p>
+                                  </div>
+                                )}
+                                {ticket.resolucao && (
+                                  <div>
+                                    <p className="text-[10px] font-black text-fiber-green uppercase tracking-widest mb-2">Resolução Técnica:</p>
+                                    <div className="text-sm text-fiber-green/90 bg-fiber-green/5 p-4 rounded-2xl border border-fiber-green/10">
+                                      {ticket.resolucao}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))
                     ) : (
                       <div className="text-center py-24 bg-neutral-900/30 rounded-[2.5rem] border border-dashed border-white/10">
                         <MessageSquare size={32} className="text-gray-600 mx-auto mb-4" />
@@ -1792,53 +1681,66 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                     {(dashboardData?.ordensServico || []).length > 0 ? (
                       [...(dashboardData?.ordensServico || [])]
                         .sort((a, b) => (b.data_abertura || "").localeCompare(a.data_abertura || ""))
-                        .map((os) => (
-                        <div
-                          key={os.id}
-                          className="bg-neutral-900/40 border border-white/5 rounded-[2rem] p-6 flex flex-col hover:bg-white/5 transition-all group"
-                        >
-                          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                            <div className="flex items-center gap-5 w-full md:w-auto flex-1">
-                              <div className="w-14 h-14 rounded-2xl bg-fiber-orange/10 text-fiber-orange flex items-center justify-center group-hover:scale-110 transition-transform">
-                                <Wrench size={28} />
-                              </div>
-                              <div className="flex-1">
-                                <p className="font-bold text-lg text-white group-hover:text-fiber-orange transition-colors">
-                                  {os.assunto_nome || os.assunto || "Serviço Técnico"}
-                                </p>
-                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
-                                  <p className="text-[10px] text-gray-500 uppercase font-black tracking-wider">
-                                    Protocolo: <span className="text-gray-400">#{os.protocolo}</span>
-                                  </p>
-                                  <p className="text-[10px] text-gray-500 uppercase font-black tracking-wider">
-                                    Data: <span className="text-gray-400">{os.data_abertura ? os.data_abertura.split(" ")[0].split("-").reverse().join("/") : "N/A"}</span>
-                                  </p>
+                        .map((os) => {
+                          const contratoRelacionado = dashboardData?.contratos.find(
+                            (c) => String(c.id) === String(os.id_contrato || os.contrato_id)
+                          );
+
+                          return (
+                            <div
+                              key={os.id}
+                              className="bg-neutral-900/40 border border-white/5 rounded-[2rem] p-6 flex flex-col hover:bg-white/5 transition-all group"
+                            >
+                              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                                <div className="flex items-center gap-5 w-full md:w-auto flex-1">
+                                  <div className="w-14 h-14 rounded-2xl bg-fiber-orange/10 text-fiber-orange flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <Wrench size={28} />
+                                  </div>
+                                  <div className="flex-1">
+                                    <p className="font-bold text-lg text-white group-hover:text-fiber-orange transition-colors">
+                                      {os.assunto_nome || os.assunto || "Serviço Técnico"}
+                                    </p>
+                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2">
+                                      <p className="text-[10px] text-gray-500 uppercase font-black tracking-wider">
+                                        Protocolo: <span className="text-gray-400">#{os.protocolo}</span>
+                                      </p>
+                                      <p className="text-[10px] text-gray-500 uppercase font-black tracking-wider">
+                                        Data: <span className="text-gray-400">{os.data_abertura ? os.data_abertura.split(" ")[0].split("-").reverse().join("/") : "N/A"}</span>
+                                      </p>
+                                      {contratoRelacionado && (
+                                        <div className="flex items-center gap-1.5 bg-fiber-blue/5 px-2 py-1 rounded-md border border-fiber-blue/10">
+                                          <MapPin size={12} className="text-fiber-blue" />
+                                          <span className="text-[10px] text-gray-300 font-bold uppercase tracking-tight">
+                                            {contratoRelacionado.endereco || `Contrato #${contratoRelacionado.id}`}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
+                                  <span
+                                    className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${os.status === "F"
+                                      ? "bg-fiber-green/10 text-fiber-green border-fiber-green/20"
+                                      : "bg-fiber-orange/10 text-fiber-orange border-fiber-orange/20"
+                                      }`}
+                                  >
+                                    {os.status === "F" ? "Realizada" : "Agendada"}
+                                  </span>
                                 </div>
                               </div>
-                            </div>
-                            <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
-                              <span
-                                className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
-                                  os.status === "F"
-                                    ? "bg-fiber-green/10 text-fiber-green border-fiber-green/20"
-                                    : "bg-fiber-orange/10 text-fiber-orange border-fiber-orange/20"
-                                }`}
-                              >
-                                {os.status === "F" ? "Realizada" : "Agendada"}
-                              </span>
-                            </div>
-                          </div>
 
-                          {(os.resolucao || os.diagnostico) && (
-                            <div className="mt-6 pt-6 border-t border-white/5">
-                              <p className="text-[10px] font-black text-fiber-orange uppercase tracking-widest mb-2">Relatório do Técnico:</p>
-                              <div className="text-sm text-gray-300 bg-black/20 p-4 rounded-2xl border border-white/5">
-                                {os.resolucao || os.diagnostico}
-                              </div>
+                              {(os.resolucao || os.diagnostico) && (
+                                <div className="mt-6 pt-6 border-t border-white/5">
+                                  <p className="text-[10px] font-black text-fiber-orange uppercase tracking-widest mb-2">Relatório do Técnico:</p>
+                                  <div className="text-sm text-gray-300 bg-black/20 p-4 rounded-2xl border border-white/5">
+                                    {os.resolucao || os.diagnostico}
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      ))
+                          );
+                        })
                     ) : (
                       <div className="text-center py-24 bg-neutral-900/30 rounded-[2.5rem] border border-dashed border-white/10">
                         <Wrench size={32} className="text-gray-600 mx-auto mb-4" />
@@ -1868,11 +1770,10 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                         <button
                           key={c.id}
                           onClick={() => setSelectedContractId(c.id)}
-                          className={`flex-shrink-0 px-5 py-3 rounded-2xl border transition-all text-left min-w-[200px] ${
-                            selectedContractId === c.id
-                              ? "bg-fiber-blue border-fiber-blue text-white shadow-xl shadow-blue-900/30 ring-2 ring-white/10"
-                              : "bg-neutral-950 border-white/5 text-gray-500 hover:border-white/20 hover:text-gray-300"
-                          }`}
+                          className={`flex-shrink-0 px-5 py-3 rounded-2xl border transition-all text-left min-w-[200px] ${selectedContractId === c.id
+                            ? "bg-fiber-blue border-fiber-blue text-white shadow-xl shadow-blue-900/30 ring-2 ring-white/10"
+                            : "bg-neutral-950 border-white/5 text-gray-500 hover:border-white/20 hover:text-gray-300"
+                            }`}
                         >
                           <div className="flex justify-between items-start mb-1">
                             <span className="text-[10px] font-black uppercase tracking-tighter opacity-60">
@@ -1894,7 +1795,7 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                       ))}
                     </div>
                   )}
-                  
+
                   <div className="bg-neutral-900/30 border border-white/5 rounded-[2.5rem] p-4 md:p-8">
                     {(() => {
                       const login = dashboardData?.logins.find(l => String(l.contrato_id) === String(selectedContractId || (dashboardData?.contratos[0]?.id)));
@@ -1990,11 +1891,10 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                         >
                           <div className="flex items-center gap-6 w-full md:w-auto flex-1">
                             <div
-                              className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 ${
-                                contrato.status === "A"
-                                  ? "bg-fiber-green/10 text-fiber-green"
-                                  : "bg-red-500/10 text-red-500"
-                              }`}
+                              className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 ${contrato.status === "A"
+                                ? "bg-fiber-green/10 text-fiber-green"
+                                : "bg-red-500/10 text-red-500"
+                                }`}
                             >
                               <FileSignature size={28} />
                             </div>
@@ -2006,9 +1906,8 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                                 <p className="text-xs text-gray-500 font-black uppercase tracking-widest">
                                   Contrato: <span className="text-gray-400">#{contrato.id}</span>
                                 </p>
-                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
-                                  contrato.status === "A" ? "bg-fiber-green/10 text-fiber-green" : "bg-red-500/10 text-red-500"
-                                }`}>
+                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${contrato.status === "A" ? "bg-fiber-green/10 text-fiber-green" : "bg-red-500/10 text-red-500"
+                                  }`}>
                                   {contrato.status === "A" ? "Ativo" : "Inativo"}
                                 </span>
                               </div>
@@ -2061,18 +1960,16 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                               </p>
                             </div>
                             <div
-                              className={`flex items-center gap-2 font-bold text-sm px-4 py-1.5 rounded-full border ${
-                                login.online === "S"
-                                  ? "bg-green-500/10 text-green-400 border-green-500/20"
-                                  : "bg-gray-500/10 text-gray-500 border-gray-500/20"
-                              }`}
+                              className={`flex items-center gap-2 font-bold text-sm px-4 py-1.5 rounded-full border ${login.online === "S"
+                                ? "bg-green-500/10 text-green-400 border-green-500/20"
+                                : "bg-gray-500/10 text-gray-500 border-gray-500/20"
+                                }`}
                             >
                               <div
-                                className={`w-2.5 h-2.5 rounded-full ${
-                                  login.online === "S"
-                                    ? "bg-green-400 animate-pulse"
-                                    : "bg-gray-500"
-                                }`}
+                                className={`w-2.5 h-2.5 rounded-full ${login.online === "S"
+                                  ? "bg-green-400 animate-pulse"
+                                  : "bg-gray-500"
+                                  }`}
                               ></div>
                               {login.online === "S" ? "Online" : "Desconectado"}
                             </div>
@@ -2090,11 +1987,10 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                                     Nível de Sinal
                                   </p>
                                   <p
-                                    className={`text-xl font-bold ${
-                                      parseFloat(diag.sinal_dbm) < -25
-                                        ? "text-red-400"
-                                        : "text-green-400"
-                                    }`}
+                                    className={`text-xl font-bold ${parseFloat(diag.sinal_dbm) < -25
+                                      ? "text-red-400"
+                                      : "text-green-400"
+                                      }`}
                                   >
                                     {diag.sinal_dbm ||
                                       login.ont_sinal_rx ||
@@ -2127,10 +2023,10 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                                   <p className="text-xs text-white">
                                     {diag.ultima_conexao
                                       ? diag.ultima_conexao
-                                          .split(" ")[0]
-                                          .split("-")
-                                          .reverse()
-                                          .join("/")
+                                        .split(" ")[0]
+                                        .split("-")
+                                        .reverse()
+                                        .join("/")
                                       : "Tempo Real"}
                                   </p>
                                 </div>
@@ -2141,7 +2037,7 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                               <div className="flex flex-col gap-1">
                                 <span className="text-[9px] text-gray-500 uppercase font-black">
                                   Interface
-                                  </span>
+                                </span>
                                 <span className="text-white flex items-center gap-2">
                                   <Server size={14} className="text-gray-500" />{" "}
                                   Fibra Óptica
@@ -2204,7 +2100,7 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                               }
                             >
                               {actionStatus[login.id]?.status ===
-                              "loading" ? (
+                                "loading" ? (
                                 <Loader2 size={14} className="animate-spin" />
                               ) : (
                                 <RefreshCw size={14} />
@@ -2222,7 +2118,7 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                               }
                             >
                               {actionStatus[login.id]?.status ===
-                              "loading" ? (
+                                "loading" ? (
                                 <Loader2 size={14} className="animate-spin" />
                               ) : (
                                 <Power size={14} />
@@ -2243,7 +2139,7 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                               }
                             >
                               {actionStatus[login.id]?.status ===
-                              "loading" ? (
+                                "loading" ? (
                                 <Loader2 size={14} className="animate-spin" />
                               ) : (
                                 <Signal size={14} />
@@ -2286,41 +2182,41 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                       [...(dashboardData?.notas || [])]
                         .sort((a, b) => (b.data_emissao || "").localeCompare(a.data_emissao || ""))
                         .map((nota) => (
-                        <div
-                          key={nota.id}
-                          className="bg-neutral-900/40 border border-white/5 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-6 hover:bg-white/5 transition-all group"
-                        >
-                          <div className="flex items-center gap-5 w-full md:w-auto flex-1">
-                            <div className="w-14 h-14 rounded-2xl bg-white/5 text-gray-400 flex items-center justify-center group-hover:scale-110 transition-transform group-hover:text-fiber-orange">
-                              <ScrollText size={28} />
-                            </div>
-                            <div>
-                              <p className="font-bold text-lg text-white">
-                                Nota Fiscal #{nota.numero_nota}
-                              </p>
-                              <div className="flex flex-wrap items-center gap-4 mt-1">
-                                <p className="text-xs text-gray-500 uppercase font-black tracking-wider">
-                                  Emissão: <span className="text-gray-400">{nota.data_emissao}</span>
+                          <div
+                            key={nota.id}
+                            className="bg-neutral-900/40 border border-white/5 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-6 hover:bg-white/5 transition-all group"
+                          >
+                            <div className="flex items-center gap-5 w-full md:w-auto flex-1">
+                              <div className="w-14 h-14 rounded-2xl bg-white/5 text-gray-400 flex items-center justify-center group-hover:scale-110 transition-transform group-hover:text-fiber-orange">
+                                <ScrollText size={28} />
+                              </div>
+                              <div>
+                                <p className="font-bold text-lg text-white">
+                                  Nota Fiscal #{nota.numero_nota}
                                 </p>
-                                <div className="bg-white/5 px-3 py-1 rounded-lg border border-white/5 text-fiber-green font-mono font-bold text-sm">
-                                  R$ {nota.valor}
+                                <div className="flex flex-wrap items-center gap-4 mt-1">
+                                  <p className="text-xs text-gray-500 uppercase font-black tracking-wider">
+                                    Emissão: <span className="text-gray-400">{nota.data_emissao}</span>
+                                  </p>
+                                  <div className="bg-white/5 px-3 py-1 rounded-lg border border-white/5 text-fiber-green font-mono font-bold text-sm">
+                                    R$ {nota.valor}
+                                  </div>
                                 </div>
                               </div>
                             </div>
+                            <div className="flex items-center gap-3 w-full md:w-auto">
+                              {nota.link_pdf && (
+                                <Button
+                                  variant="outline"
+                                  className="!py-2.5 !px-6 !text-xs gap-2 !rounded-xl border-white/10 hover:border-fiber-blue hover:text-fiber-blue transition-all"
+                                  onClick={() => window.open(nota.link_pdf, "_blank")}
+                                >
+                                  <Download size={16} /> Visualizar PDF
+                                </Button>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex items-center gap-3 w-full md:w-auto">
-                            {nota.link_pdf && (
-                              <Button
-                                variant="outline"
-                                className="!py-2.5 !px-6 !text-xs gap-2 !rounded-xl border-white/10 hover:border-fiber-blue hover:text-fiber-blue transition-all"
-                                onClick={() => window.open(nota.link_pdf, "_blank")}
-                              >
-                                <Download size={16} /> Visualizar PDF
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      ))
+                        ))
                     ) : (
                       <div className="text-center py-24 bg-neutral-900/30 rounded-[2.5rem] border border-dashed border-white/10">
                         <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -2379,18 +2275,17 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                             </button>
                           </div>
                         </div>
-                        
+
                         <Button type="submit" variant="primary" fullWidth className="!py-4 !rounded-2xl font-black shadow-lg shadow-fiber-orange/20">
                           Salvar Alterações
                         </Button>
                       </form>
 
                       {passwordChangeStatus && (
-                        <div className={`mt-6 p-4 rounded-2xl text-sm font-bold border animate-fadeIn ${
-                          passwordChangeStatus.type === "success"
-                            ? "bg-fiber-green/10 border-fiber-green/20 text-fiber-green"
-                            : "bg-red-500/10 border-red-500/20 text-red-400"
-                        }`}>
+                        <div className={`mt-6 p-4 rounded-2xl text-sm font-bold border animate-fadeIn ${passwordChangeStatus.type === "success"
+                          ? "bg-fiber-green/10 border-fiber-green/20 text-fiber-green"
+                          : "bg-red-500/10 border-red-500/20 text-red-400"
+                          }`}>
                           {passwordChangeStatus.message}
                         </div>
                       )}
@@ -2408,7 +2303,7 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                             <p className="text-gray-500 text-xs">E-mail vinculado à sua conta Fiber.Net.</p>
                           </div>
                         </div>
-                        
+
                         <div className="bg-black/40 border border-white/5 rounded-2xl p-6">
                           <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">E-mail Cadastrado</p>
                           <p className="text-white font-bold">{dashboardData?.clientes[0]?.email || "Não informado"}</p>

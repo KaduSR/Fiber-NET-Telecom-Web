@@ -11,7 +11,7 @@ import Navbar from "./src/components/Layout/Navbar";
 import SupportModal from "./src/components/Modals/SupportModal";
 import NewsSection from "./src/components/NewsSection";
 import PlanCard from "./src/components/PlanCard";
-import SegundaViaModal from "./src/components/SegundaViaModal";
+import SegundaViaModal from "./src/components/Modals/SegundaViaModal";
 
 import { HISTORY_TEXT, PLANS } from "./src/types/constants";
 

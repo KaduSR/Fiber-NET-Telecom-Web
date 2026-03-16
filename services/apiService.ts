@@ -95,11 +95,15 @@ class ApiService {
     const clientes = rawData.clientes || [];
 
     // 2. Normalizar Contratos
-    const contratos = (rawData.contratos || []).map((c: any) => ({
-      ...c,
-      plano: c.plano || c.descricao_aux_plano_venda || "Plano Fiber",
-      endereco: c.endereco || clientes[0]?.endereco || "",
-    }));
+    const contratos = (rawData.contratos || []).map((c: any) => {
+      const idNormalizado = c.id || c.id_contrato;
+      return {
+        ...c,
+        id: idNormalizado,
+        plano: c.plano || c.descricao_aux_plano_venda || "Plano Fiber",
+        endereco: c.endereco || clientes[0]?.endereco || "",
+      };
+    });
 
     // 3. Normalizar Logins
     const logins = (rawData.logins || []).map((l: any) => {
@@ -109,7 +113,7 @@ class ApiService {
 
       return {
         ...l,
-        contrato_id: l.contrato_id || contratos[0]?.id,
+        contrato_id: l.contrato_id || (contratos.length > 0 ? contratos[0].id : null),
         online: l.status === "online" || l.online === "S" ? "S" : "N",
         tempo_conectado: l.uptime ? this.formatUptime(l.uptime) : "Recente",
         sinal_ultimo_atendimento:
@@ -132,7 +136,7 @@ class ApiService {
 
       // Se tiver 'recebido', 'pago' ou 'liquidado', marcamos como "P" (Pago)
       // para aparecer no Histórico corretamente.
-      if (["r", "p", "pago", "recebido", "liquidado"].includes(statusLower)) {
+      if (["r", "p", "pago", "recebido", "liquidado", "liquidada"].includes(statusLower)) {
         statusNormalizado = "P";
       }
 
@@ -140,12 +144,16 @@ class ApiService {
         statusNormalizado = "C";
       }
 
+      const cId = f.contrato_id || f.id_contrato || (contratos.length === 1 ? contratos[0].id : null);
+
       return {
         ...f,
-        data_vencimento: f.vencimento || f.data_vencimento,
+        data_vencimento: f.vencimento || f.data_vencimento || "",
+        valor: f.valor || "0,00",
         status: statusNormalizado,
         // Garante que o contrato_id esteja presente para o filtro do frontend
-        contrato_id: f.contrato_id || f.id_contrato || (contratos.length === 1 ? contratos[0].id : null),
+        contrato_id: cId,
+        id_contrato: cId,
         // Garante que o valor recebido seja repassado para o frontend calcular
         valor_recebido: f.valor_recebido || f.valor_pago || 0,
         pix_code: f.pix_code || null,
