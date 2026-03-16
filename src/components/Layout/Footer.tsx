@@ -216,18 +216,31 @@ const Footer: React.FC<FooterProps> = ({
               22.969.088/0001-97
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <span>Desenvolvido por</span>
+          <div className="flex flex-col md:flex-row items-center gap-4">
+            <span className="text-gray-500">Desenvolvido por <strong className="text-gray-400">Kadu Dev</strong></span>
+            <div className="flex items-center gap-3">
+              <a href="https://wa.me/5524992686868" target="_blank" rel="noreferrer" className="text-gray-500 hover:text-green-500 transition-colors">
+                <MessageCircle size={14} />
+              </a>
+              <a href="https://instagram.com/kadudev" target="_blank" rel="noreferrer" className="text-gray-500 hover:text-pink-500 transition-colors">
+                <Instagram size={14} />
+              </a>
+              <a href="https://linkedin.com/in/kadudev" target="_blank" rel="noreferrer" className="text-gray-500 hover:text-blue-500 transition-colors">
+                <svg size={14} viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
+                  <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+                </svg>
+              </a>
+            </div>
             <a
               href="https://kadudev.com"
               target="_blank"
               rel="noreferrer"
-              className="hover:opacity-80 transition-opacity"
+              className="hover:opacity-80 transition-opacity ml-2"
             >
               <img
                 src="https://images.unsplash.com/vector-1763657979649-8d8d789164df?q=80&w=880&auto=format&fit=crop&fm=webp"
                 alt="KaduDev Logo"
-                className="h-20 w-auto opacity-80"
+                className="h-8 w-auto opacity-50 filter grayscale"
               />
             </a>
           </div>
