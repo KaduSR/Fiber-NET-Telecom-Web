@@ -4,6 +4,7 @@ import React, { Suspense, useEffect, useState } from "react";
 import { updateStatusInBackground } from "./services/statusMonitor";
 import ClientArea from "./src/components/ClientArea";
 import Features from "./src/components/Features";
+import PromoSection from "./src/components/PromoSection";
 import FiberNetTextLogo from "./src/components/FiberNetTextLogo";
 import Hero from "./src/components/Hero";
 import Footer from "./src/components/Layout/Footer";
@@ -154,6 +155,8 @@ const App: React.FC = () => {
             </section>
 
             <Features />
+
+            <PromoSection onOpenSupport={() => setIsSupportModalOpen(true)} />
 
             <section className="py-16 bg-fiber-dark">
               <div className="max-w-7xl mx-auto px-4 text-center">
