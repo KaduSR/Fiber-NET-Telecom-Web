@@ -262,7 +262,7 @@ const App: React.FC = () => {
               </div>
             </section>
 
-            <section id="planos" className="py-24 pb-20 bg-fiber-dark py-5">
+            <section id="planos" className="py-24 pb-20 bg-fiber-dark">
               <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center max-w-3xl mx-auto mb-16">
                   <h2 className="text-3xl font-bold text-white sm:text-4xl mb-4">
