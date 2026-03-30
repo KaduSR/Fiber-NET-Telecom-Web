@@ -13,10 +13,10 @@ import {
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import QRCode from "react-qr-code";
-import { API_BASE_URL, ENDPOINTS } from "../../config";
-import { apiService } from "../../services/apiService";
-import { Fatura as DashboardFatura } from "../../types/api";
-import Button from "./Button";
+import { API_BASE_URL, ENDPOINTS } from "../../../config";
+import { apiService } from "../../../services/apiService";
+import { Fatura as DashboardFatura } from "../../../types/api";
+import Button from "../Button";
 
 interface SegundaViaModalProps {
   isOpen: boolean;
@@ -480,11 +480,10 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
                             Vencimento
                           </p>
                           <p
-                            className={`font-medium ${
-                              boleto.diasVencimento < 0
+                            className={`font-medium ${boleto.diasVencimento < 0
                                 ? "text-red-500"
                                 : "text-white"
-                            }`}
+                              }`}
                           >
                             {boleto.vencimentoFormatado}
                           </p>

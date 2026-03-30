@@ -1,10 +1,12 @@
-import React from 'react';
+import React from "react";
 
 interface FiberNetTextLogoProps {
   className?: string;
 }
 
-const FiberNetTextLogo: React.FC<FiberNetTextLogoProps> = ({ className = '' }) => {
+const FiberNetTextLogo: React.FC<FiberNetTextLogoProps> = ({
+  className = "",
+}) => {
   return (
     <span className={`font-marker tracking-wider ${className}`}>
       <span className="text-fiber-lime">Fiber</span>

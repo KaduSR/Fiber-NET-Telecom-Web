@@ -13,7 +13,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./"),
+      "@": path.resolve(__dirname, "./src"),
     },
   },
   optimizeDeps: {
@@ -24,7 +24,7 @@ export default defineConfig({
     host: true,
     proxy: {
       "/api-proxy": {
-        // 👇 AQUI: Mude de localhost para a URL de produção
+        // Redirecionando para produção para evitar erros de conexão local
         target: "https://api.centralfiber.online",
         changeOrigin: true,
         secure: false,

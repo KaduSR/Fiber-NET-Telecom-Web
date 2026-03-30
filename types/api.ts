@@ -12,12 +12,12 @@ export interface Cliente {
 export interface Contrato {
   id: number;
   id_cliente: number;
-  login: string; 
+  login: string;
   plano: string; // Adicionado para compatibilidade
   status: string; // 'A', 'S', 'C'
   desbloqueio_confianca: 'S' | 'N';
-  descricao_aux_plano_venda?: string; 
-  pdf_link?: string; 
+  descricao_aux_plano_venda?: string;
+  pdf_link?: string;
   endereco?: string;
   numero?: string;
   bairro?: string;
@@ -28,10 +28,11 @@ export interface Fatura {
   id: number;
   id_cliente: number;
   contrato_id?: number;
+  id_contrato?: number;
   documento: string;
   data_emissao?: string;
-  data_vencimento: string; 
-  vencimento?: string; 
+  data_vencimento: string;
+  vencimento?: string;
   valor: string;
   status: string; // "pago" | "aberto" | "A" | "B" | "C"
   linha_digitavel: string;
@@ -45,20 +46,20 @@ export interface Fatura {
 }
 
 export interface NotaFiscal {
-    id: number | string;
-    contrato_id?: number;
-    numero_nota?: string;
-    summary?: string; 
-    insights?: any[]; 
-    data_emissao?: string;
-    valor?: string;
-    link_pdf?: string;
+  id: number | string;
+  contrato_id?: number;
+  numero_nota?: string;
+  summary?: string;
+  insights?: any[];
+  data_emissao?: string;
+  valor?: string;
+  link_pdf?: string;
 }
 
 export interface ConsumoPoint {
-  data?: string;     
+  data?: string;
   mes_ano?: string;
-  semana?: string;  
+  semana?: string;
   download_bytes: number;
   upload_bytes: number;
 }
@@ -75,10 +76,10 @@ export interface Login {
   id_cliente: number;
   contrato_id: number;
   online: 'S' | 'N';
-  status?: string; 
+  status?: string;
   uptime?: string; // tempo em segundos ou string formatada
   sinal_ultimo_atendimento: string;
-  
+
   // ONT Details
   ont_modelo?: string;
   ont_sinal_rx?: string;
@@ -91,25 +92,53 @@ export interface Login {
   download_atual?: string;
   ip_privado?: string;
   ip_publico?: string;
-  
-  history?: HistoryData; 
+
+  history?: HistoryData;
 }
 
 export interface Consumo {
   total_download_bytes: number;
   total_upload_bytes: number;
-  total_download: string; 
+  total_download: string;
   total_upload: string;
   history: HistoryData;
 }
 
 export interface OrdemServico {
+  [x: string]: string | undefined;
   id: string;
   tipo: string;
   status: string;
   protocolo: string;
   data_abertura: string;
   mensagem: string;
+  assunto?: string;
+  assunto_nome?: string;
+  data_fechamento?: string;
+  resolucao?: string;
+}
+
+export interface Ticket {
+  id: string;
+  protocolo: string;
+  assunto: string;
+  assunto_nome?: string;
+  status: string;
+  data_abertura: string;
+  mensagem: string;
+  prioridade?: string;
+  resolucao?: string;
+}
+
+export interface Termo {
+  id: number;
+  id_contrato: number;
+  id_modelo_termo: number;
+  data_aceite?: string;
+  ip_aceite?: string;
+  status: 'P' | 'A' | 'C';
+  titulo?: string;
+  conteudo?: string;
 }
 
 export interface OntInfo {
@@ -129,7 +158,7 @@ export interface Task {
   title: string;
   description: string;
   status?: string;
-  analysis?: string; 
+  analysis?: string;
   createdAt?: string;
 }
 
@@ -151,26 +180,28 @@ export interface DashboardResponse {
   contratos: Contrato[];
   faturas: Fatura[];
   logins: Login[];
-  notas: NotaFiscal[]; 
+  notas: NotaFiscal[];
   ordensServico: OrdemServico[];
+  tickets: Ticket[];
+  termos: Termo[];
   ontInfo: OntInfo[];
   consumo: Consumo;
-  ai_analysis?: AiAnalysis; 
+  ai_analysis?: AiAnalysis;
 }
 
 export interface LoginResponse {
   token: string;
   user?: {
-      id: number;
-      nome: string;
-      email: string;
+    id: number;
+    nome: string;
+    email: string;
   }
 }
 
 export interface ChatMessage {
-    id: string;
-    sender: 'user' | 'bot';
-    text: string;
-    timestamp: Date;
-    sources?: { title: string; url: string }[];
+  id: string;
+  sender: 'user' | 'bot';
+  text: string;
+  timestamp: Date;
+  sources?: { title: string; url: string }[];
 }

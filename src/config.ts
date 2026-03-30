@@ -7,6 +7,7 @@ export const getApiBaseUrl = () => {
   }
 
   return "https://api.centralfiber.online/api";
+  // return "http://localhost:3001/api";
 };
 
 export const API_BASE_URL = getApiBaseUrl();
@@ -16,11 +17,10 @@ export const ENDPOINTS = {
   DASHBOARD: `/dashboard`,
   CHANGE_PASSWORD: `/senha/trocar`,
   RECOVERY: `/senha/recuperar`,
-  INVOICES: `/boletos/buscar-cpf`, // <--- CORRIGIDO (Rota real do Backend)
+  INVOICES: `/boletos/buscar-cpf`,
   SERVICE_STATUS: `/status`,
   SPEEDTEST_RUN: `/speedtest`,
-  // Nova rota dinâmica para PIX
-  GET_PIX: (id: number | string) => `/boletos/${id}/pix`, // <--- GARANTA QUE ESTEJA ASSIM TAMBÉM
+  GET_PIX: (id: number | string) => `/boletos/${id}/pix`,
   LOGIN_ACTION: (id: string | number, action: string) =>
     `/logins/${id}/${action}`,
 };

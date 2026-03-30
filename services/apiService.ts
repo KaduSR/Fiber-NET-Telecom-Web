@@ -1,5 +1,3 @@
-// src/services/apiService.ts
-// cspell: disable
 import { API_BASE_URL, ENDPOINTS } from "../config";
 import { DashboardResponse, LoginResponse } from "../types/api";
 
@@ -19,7 +17,7 @@ class ApiService {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
   ): Promise<T> {
     const cleanBase = API_BASE_URL.endsWith("/")
       ? API_BASE_URL.slice(0, -1)
@@ -28,7 +26,7 @@ class ApiService {
     const url = `${cleanBase}${cleanEndpoint}`;
 
     try {
-      // console.log(`[Frontend] Requesting: ${url}`);
+      console.log(`[Frontend] Requesting: ${url}`);
       const response = await fetch(url, {
         ...options,
         headers: {
@@ -97,21 +95,25 @@ class ApiService {
     const clientes = rawData.clientes || [];
 
     // 2. Normalizar Contratos
-    const contratos = (rawData.contratos || []).map((c: any) => ({
-      ...c,
-      plano: c.plano || c.descricao_aux_plano_venda || "Plano Fiber",
-      endereco: c.endereco || clientes[0]?.endereco || "",
-    }));
+    const contratos = (rawData.contratos || []).map((c: any) => {
+      const idNormalizado = c.id || c.id_contrato;
+      return {
+        ...c,
+        id: idNormalizado,
+        plano: c.plano || c.descricao_aux_plano_venda || "Plano Fiber",
+        endereco: c.endereco || clientes[0]?.endereco || "",
+      };
+    });
 
     // 3. Normalizar Logins
     const logins = (rawData.logins || []).map((l: any) => {
       const ont = (rawData.ontInfo || []).find(
-        (o: any) => String(o.id_login) === String(l.id)
+        (o: any) => String(o.id_login) === String(l.id),
       );
 
       return {
         ...l,
-        contrato_id: l.contrato_id || contratos[0]?.id,
+        contrato_id: l.contrato_id || (contratos.length > 0 ? contratos[0].id : null),
         online: l.status === "online" || l.online === "S" ? "S" : "N",
         tempo_conectado: l.uptime ? this.formatUptime(l.uptime) : "Recente",
         sinal_ultimo_atendimento:
@@ -134,7 +136,7 @@ class ApiService {
 
       // Se tiver 'recebido', 'pago' ou 'liquidado', marcamos como "P" (Pago)
       // para aparecer no Histórico corretamente.
-      if (["r", "p", "pago", "recebido", "liquidado"].includes(statusLower)) {
+      if (["r", "p", "pago", "recebido", "liquidado", "liquidada"].includes(statusLower)) {
         statusNormalizado = "P";
       }
 
@@ -142,10 +144,16 @@ class ApiService {
         statusNormalizado = "C";
       }
 
+      const cId = f.contrato_id || f.id_contrato || (contratos.length === 1 ? contratos[0].id : null);
+
       return {
         ...f,
-        data_vencimento: f.vencimento || f.data_vencimento,
+        data_vencimento: f.vencimento || f.data_vencimento || "",
+        valor: f.valor || "0,00",
         status: statusNormalizado,
+        // Garante que o contrato_id esteja presente para o filtro do frontend
+        contrato_id: cId,
+        id_contrato: cId,
         // Garante que o valor recebido seja repassado para o frontend calcular
         valor_recebido: f.valor_recebido || f.valor_pago || 0,
         pix_code: f.pix_code || null,
@@ -160,6 +168,8 @@ class ApiService {
       logins,
       notas: rawData.notas || [],
       ordensServico: rawData.ordensServico || [],
+      tickets: rawData.tickets || [],
+      termos: rawData.termos || [],
       ontInfo: rawData.ontInfo || [],
       consumo: rawData.consumo || {
         total_download: "0 GB",
@@ -177,33 +187,15 @@ class ApiService {
   // === MÉTODOS DE BOLETOS E PIX ===
 
   async getPixCode(
-    faturaId: string | number
+    faturaId: string | number,
   ): Promise<{ qrcode: string; imagem: string }> {
     try {
-      // @ts-ignore
-      const url =
-        typeof ENDPOINTS.GET_PIX === "function"
-          ? ENDPOINTS.GET_PIX(faturaId)
-          : `/faturas/${faturaId}/pix`;
+      const url = `/boletos/${faturaId}/pix`;
       const response = await this.request<any>(url, { method: "GET" });
 
-      if (response.pix && response.pix.qrCode) {
-        return {
-          qrcode: response.pixCopiaECola,
-          imagem: response.pixImage || "",
-        };
-      }
-
-      if (response.pix_code && response.pix_qrcode) {
-        return {
-          qrcode: response.pix_code,
-          imagem: response.pix_qrcode || "",
-        };
-      }
-
       return {
-        qrcode: "",
-        imagem: "",
+        qrcode: response.pixCopiaECola || response.pix?.qrcode || response.pix?.qrCode?.qrcode || response.pix_code || "",
+        imagem: response.pixImagem || response.pix?.imagem || response.pix?.qrCode?.imagemQrcode || response.pix_qrcode || "",
       };
     } catch (error) {
       console.error(`[ApiService] Erro PIX ${faturaId}:`, error);
@@ -213,7 +205,7 @@ class ApiService {
 
   // 🔥 CORREÇÃO PRINCIPAL: Adicionado 'getSegundaVia' que faltava
   async getSegundaVia(
-    id: number | string
+    id: number | string,
   ): Promise<{ base64_document: string }> {
     // Aponta para a rota correta do seu backend
     const url = `/boletos/${id}/segunda-via`;
@@ -228,7 +220,7 @@ class ApiService {
   }
 
   async imprimirNotaFiscal(
-    id: number | string
+    id: number | string,
   ): Promise<{ base64_document: string }> {
     const url = `/notas/${id}/imprimir`;
     return this.request<{ base64_document: string }>(url, {
@@ -238,14 +230,72 @@ class ApiService {
 
   // === MÉTODOS DE AÇÃO ===
 
+  // === MÉTODOS DE AÇÃO DO CONTRATO (NOVOS) ===
+
+  /**
+   * Realiza o Desbloqueio de Confiança
+   */
+  async unlockContract(idContrato: number): Promise<{ success: boolean; message: string }> {
+    return this.request<any>(`/contratos/${idContrato}/desbloqueio`, {
+      method: "POST",
+    });
+  }
+
+  /**
+   * Busca Diagnóstico Avançado (Sinal, Status ONU)
+   */
+  async getDiagnostico(idContrato: number): Promise<any> {
+    return this.request<any>(`/contratos/${idContrato}/diagnostico`, {
+      method: "GET",
+    });
+  }
+
+  /**
+   * Assinatura Digital (Rota Corrigida)
+   */
+  async assinarContrato(idTermo: number): Promise<any> {
+    // Rota ajustada para bater com: router.post("/termos/:id_termo/assinar", ...)
+    return this.request<any>(`/termos/${idTermo}/assinar`, {
+      method: "POST",
+    });
+  }
+
   async performLoginAction(loginId: number, action: string): Promise<any> {
-    // @ts-ignore
-    const url =
-      typeof ENDPOINTS.LOGIN_ACTION === "function"
-        ? ENDPOINTS.LOGIN_ACTION(loginId, action)
-        : `/logins/${loginId}/${action}`;
+    const url = `/logins/${loginId}/${action}`;
     return this.request<any>(url, { method: "POST" });
   }
+async getContratoPdf(id: number): Promise<{base64_document: string}>{
+  const url = `/contratos/${id}/pdf`;
+  return this.request<{base64_document: string}>(url, {
+    method: "POST",
+    body: JSON.stringify({id}),
+  });
+}
+
+  async createTicket(payload: {
+    id_cliente: string;
+    titulo: string;
+    menssagem: string;
+  }): Promise<any> {
+    return this.request<any>("/tickets", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async closeTicket(id: number | string): Promise<any> {
+    return this.request<any>(`/tickets/${id}/close`, {
+      method: "POST",
+    });
+  }
+
+
+  // async getContratoPdf(id: number): Promise<{ base64_document: string }> {
+  //   const url = `/contratos/${id}/pdf`;
+  //   return this.request<{ base64_document: string }>(url, {
+  //     method: "GET",
+  //   });
+  // }
 
   async recoverPassword(email: string): Promise<{ message: string }> {
     return this.request<{ message: string }>(ENDPOINTS.RECOVERY, {

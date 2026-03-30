@@ -230,11 +230,11 @@ const HelpCenter: React.FC<HelpCenterProps> = ({ onOpenSegundaVia }) => {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar de Categorias */}
           <div className="w-full lg:w-1/4">
-            <div className="bg-fiber-card border border-white/10 rounded-xl overflow-hidden sticky top-28">
-              <div className="p-4 bg-neutral-900 border-b border-white/5 font-bold text-white uppercase text-xs tracking-wider">
+            <div className="bg-fiber-card border border-white/10 rounded-xl overflow-hidden sticky top-24 lg:top-28 z-20 shadow-xl">
+              <div className="p-4 bg-neutral-900 border-b border-white/5 font-bold text-white uppercase text-xs">
                 Categorias
               </div>
-              <div className="flex flex-row lg:flex-col overflow-x-auto lg:overflow-visible">
+              <div className="flex flex-row lg:flex-col overflow-x-auto lg:overflow-visible lg">
                 {CATEGORIES.map((category) => {
                   const isActive = activeCategory === category;
                   return (

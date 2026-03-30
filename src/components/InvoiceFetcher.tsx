@@ -8,11 +8,11 @@ const InvoiceFetcher: React.FC = () => {
   const [cpf, setCpf] = useState("");
   const [loading, setLoading] = useState(false);
   const [invoices, setInvoices] = useState<Invoice[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   const [loadingPdfId, setLoadingPdfId] = useState<string | number | null>(
     null
   );
-  const [activePixCode, setActivePixCode] = useState<string | null>(null);
+  const [activePixCode] = useState<string | null>(null);
 
   const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/\D/g, "");
@@ -52,11 +52,13 @@ const InvoiceFetcher: React.FC = () => {
   const handleViewPdf = async (id: number | string) => {
     setLoadingPdfId(id);
     try {
-      const response = await apiService.getInvoicePdf(id);
+      const response = await apiService.getSegundaVia(id);
+      // @ts-ignore
       if (response.url) {
+        // @ts-ignore
         window.open(response.url, "_blank");
-      } else if (response.base64 || response.base64_document) {
-        const b64 = response.base64 || response.base64_document;
+      } else if (response.base64_document) {
+        const b64 = response.base64_document;
         if (b64) {
           const byteCharacters = atob(b64);
           const byteNumbers = new Array(byteCharacters.length);
