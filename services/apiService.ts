@@ -304,10 +304,10 @@ async getContratoPdf(id: number): Promise<{base64_document: string}>{
     });
   }
 
-  async changePassword(newPassword: string): Promise<{ message: string }> {
+  async changePassword(senhaAtual: string, novaSenha: string): Promise<{ message: string }> {
     return this.request<{ message: string }>(ENDPOINTS.CHANGE_PASSWORD, {
       method: "POST",
-      body: JSON.stringify({ newPassword }),
+      body: JSON.stringify({ senhaAtual, novaSenha }),
     });
   }
 

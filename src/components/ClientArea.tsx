@@ -535,6 +535,9 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
     message: string;
   } | null>(null);
   const [showNewPass, setShowNewPass] = useState(false);
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
+  const [isChangingPass, setIsChangingPass] = useState(false);
   const [actionStatus, setActionStatus] = useState<{
     [key: string]: {
       status: "idle" | "loading" | "success" | "error";
@@ -731,14 +734,28 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
     e.preventDefault();
     setPasswordChangeStatus(null);
     const formData = new FormData(e.currentTarget);
-    const newPassword = formData.get("novaSenha") as string;
+    const senhaAtual = formData.get("senhaAtual") as string;
+    const novaSenha = formData.get("novaSenha") as string;
+    const confirmaSenha = formData.get("confirmaSenha") as string;
 
+    if (novaSenha.length < 6) {
+      setPasswordChangeStatus({ type: "error", message: "A nova senha deve ter no mínimo 6 caracteres." });
+      return;
+    }
+    if (novaSenha !== confirmaSenha) {
+      setPasswordChangeStatus({ type: "error", message: "A confirmação de senha não confere com a nova senha." });
+      return;
+    }
+
+    setIsChangingPass(true);
     try {
-      const data = await apiService.changePassword(newPassword);
-      setPasswordChangeStatus({ type: "success", message: data.message });
+      const data = await apiService.changePassword(senhaAtual, novaSenha);
+      setPasswordChangeStatus({ type: "success", message: data.message || "Senha alterada com sucesso!" });
       e.currentTarget.reset();
     } catch (error: any) {
-      setPasswordChangeStatus({ type: "error", message: error.message });
+      setPasswordChangeStatus({ type: "error", message: error.message || "Não foi possível alterar a senha. Verifique sua senha atual e tente novamente." });
+    } finally {
+      setIsChangingPass(false);
     }
   };
 
@@ -1393,8 +1410,8 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                         [...(dashboardData.faturas || [])]
                           .filter(f => f.status !== "C") // Remove canceladas
                           .sort((a, b) => {
-                            // Ordena por data (mais recente) e depois status (Aberto antes de Pago)
-                            const dateComp = (b.data_vencimento || "").localeCompare(a.data_vencimento || "");
+                            // Ascendente: mais atual → futuro (vencimento mais próximo primeiro)
+                            const dateComp = (a.data_vencimento || "").localeCompare(b.data_vencimento || "");
                             if (dateComp !== 0) return dateComp;
                             return a.status === "A" ? -1 : 1;
                           })
@@ -1514,7 +1531,8 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
 
                         [...faturasFiltradas]
                           .sort((a, b) => {
-                            const dateComp = (b.data_vencimento || "").localeCompare(a.data_vencimento || "");
+                            // Ascendente: mais atual → futuro (vencimento mais próximo primeiro)
+                            const dateComp = (a.data_vencimento || "").localeCompare(b.data_vencimento || "");
                             if (dateComp !== 0) return dateComp;
                             return a.status === "A" ? -1 : 1;
                           })
@@ -2250,7 +2268,29 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                         </div>
                       </div>
 
-                      <form onSubmit={handlePasswordChange} className="space-y-6">
+                      <form onSubmit={handlePasswordChange} className="space-y-5">
+                        {/* Senha Atual */}
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Senha Atual</label>
+                          <div className="relative">
+                            <input
+                              type={showCurrentPass ? "text" : "password"}
+                              name="senhaAtual"
+                              placeholder="Digite sua senha atual"
+                              required
+                              className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 pr-12 text-white focus:ring-2 focus:ring-fiber-orange/50 transition-all outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowCurrentPass(!showCurrentPass)}
+                              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                            >
+                              {showCurrentPass ? <Unlock size={20} /> : <Eye size={20} />}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Nova Senha */}
                         <div className="space-y-2">
                           <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Nova Senha</label>
                           <div className="relative">
@@ -2271,8 +2311,35 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                           </div>
                         </div>
 
-                        <Button type="submit" variant="primary" fullWidth className="!py-4 !rounded-2xl font-black shadow-lg shadow-fiber-orange/20">
-                          Salvar Alterações
+                        {/* Confirmar Nova Senha */}
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Confirmar Nova Senha</label>
+                          <div className="relative">
+                            <input
+                              type={showConfirmPass ? "text" : "password"}
+                              name="confirmaSenha"
+                              placeholder="Repita a nova senha"
+                              required
+                              className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 pr-12 text-white focus:ring-2 focus:ring-fiber-orange/50 transition-all outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowConfirmPass(!showConfirmPass)}
+                              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                            >
+                              {showConfirmPass ? <Unlock size={20} /> : <Eye size={20} />}
+                            </button>
+                          </div>
+                        </div>
+
+                        <Button
+                          type="submit"
+                          variant="primary"
+                          fullWidth
+                          disabled={isChangingPass}
+                          className="!py-4 !rounded-2xl font-black shadow-lg shadow-fiber-orange/20"
+                        >
+                          {isChangingPass ? <Loader2 className="animate-spin mx-auto" size={22} /> : "Salvar Alterações"}
                         </Button>
                       </form>
 
