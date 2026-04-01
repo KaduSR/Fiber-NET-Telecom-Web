@@ -1126,30 +1126,25 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
   }
 
   // --- LÓGICA DE CÁLCULO DE DÉBITOS PARA O BANNER GERAL ---
+  // O banner só aparece se a fatura está com status "A" E a data de vencimento
+  // já passou (fatura efetivamente vencida). Faturas em aberto com vencimento
+  // futuro (cliente em dia) NÃO devem acionar o alerta.
   const now = new Date();
-  const currentMonth = now.getMonth() + 1;
-  const currentYear = now.getFullYear();
+  now.setHours(0, 0, 0, 0);
 
   const totalGeralDivida = (dashboardData?.faturas || [])
     .filter((f) => {
       if (f.status !== "A") return false;
       const dateStr = String(f.data_vencimento);
-      let month = 0, year = 0;
-      if (dateStr.includes("/")) {
-        const parts = dateStr.split("/");
-        month = parseInt(parts[1], 10);
-        year = parseInt(parts[2], 10);
-      } else if (dateStr.includes("-")) {
-        const parts = dateStr.split("-");
-        if (parts[0].length === 4) {
-          year = parseInt(parts[0], 10);
-          month = parseInt(parts[1], 10);
-        } else {
-          year = parseInt(parts[2], 10);
-          month = parseInt(parts[1], 10);
-        }
-      }
-      return month === currentMonth && year === currentYear;
+      // Normaliza para ISO (YYYY-MM-DD) ao adicionar horário fixo para evitar
+      // problemas de fuso horário ao comparar apenas a data.
+      const dataSegura = dateStr.includes("T")
+        ? dateStr
+        : dateStr.replace(/(\d{2})\/(\d{2})\/(\d{4})/, "$3-$2-$1") + "T12:00:00";
+      const venc = new Date(dataSegura);
+      venc.setHours(0, 0, 0, 0);
+      // Só conta como dívida se o vencimento já passou (venceu ontem ou antes)
+      return venc < now;
     })
     .reduce((acc, curr) => acc + parseFloat(String(curr.valor).replace(",", ".")), 0);
 
