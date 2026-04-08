@@ -133,7 +133,7 @@ const PromoSection: React.FC<PromoSectionProps> = ({ onOpenSupport }) => {
             >
               <a
                 id="promo-whatsapp-fiberlight"
-                href="https://wa.me/5524992175577?text=Olá!%20Quero%20saber%20mais%20sobre%20o%20Fiber%20Light!%20🚀"
+                href="https://wa.me/552424581861?text=Olá!%20Quero%20saber%20mais%20sobre%20o%20Fiber%20Light!%20🚀"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="group inline-flex items-center gap-2 bg-fiber-orange text-white font-bold px-8 py-4 rounded-lg shadow-[0_0_24px_rgba(255,107,0,0.4)] hover:shadow-[0_0_36px_rgba(255,107,0,0.7)] hover:bg-orange-500 transition-all duration-300 text-sm"
