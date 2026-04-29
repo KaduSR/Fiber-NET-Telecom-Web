@@ -36,7 +36,7 @@ const InvoiceFetcher: React.FC = () => {
       const response = await fetch("/api-proxy/api/faturas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ document: cleanCpf }),
+        body: JSON.stringify({ cpfCnpj: cleanCpf }),
       });
       if (!response.ok) throw new Error("Cliente não encontrado.");
       const data = await response.json();

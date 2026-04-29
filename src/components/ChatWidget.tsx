@@ -1,4 +1,3 @@
-import { Chat, GoogleGenAI } from "@google/genai";
 import {
   AlertTriangle,
   Loader2,
@@ -8,6 +7,7 @@ import {
   Zap,
 } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
+import { apiService } from "../../services/apiService";
 import { DashboardResponse } from "../../types/api";
 
 interface ChatWidgetProps {
@@ -31,7 +31,6 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
   const [isTyping, setIsTyping] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [chatSession, setChatSession] = useState<Chat | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -39,60 +38,8 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
 
   // Initialize Chat Session
   useEffect(() => {
-    if (!process.env.API_KEY || hasInitialized.current) return;
+    if (hasInitialized.current) return;
 
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-    // Create context string from dashboard data
-    let systemContext = `Você é o assistente virtual da Fiber.Net Telecom. Seu nome é Fiber.IA.
-    O cliente se chama ${clientName}.
-    Seja educado, técnico mas acessível. Responda em Português do Brasil.
-    
-    DADOS DO CLIENTE EM TEMPO REAL:
-    `;
-
-    if (dashboardData) {
-      const faturasAbertas = dashboardData.faturas.filter(
-        (f) => f.status === "A"
-      );
-      const loginsOffline = dashboardData.logins.filter(
-        (l) => l.online === "N"
-      );
-
-      systemContext += `\n- Contratos Ativos: ${
-        dashboardData.contratos.filter((c) => c.status === "A").length
-      }`;
-      systemContext += `\n- Faturas em Aberto: ${
-        faturasAbertas.length
-      } (Valor total aprox: R$ ${faturasAbertas
-        .reduce(
-          (acc, curr) => acc + parseFloat(curr.valor.replace(",", ".")),
-          0
-        )
-        .toFixed(2)})`;
-      systemContext += `\n- Status da Conexão: ${
-        loginsOffline.length > 0
-          ? "ALERTA: Cliente possui equipamentos OFFLINE"
-          : "Conexão estável/Online"
-      }.`;
-
-      if (faturasAbertas.length > 0) {
-        systemContext += `\n\nATENÇÃO: O cliente possui faturas vencidas ou a vencer. Se ele perguntar sobre bloqueio ou internet lenta, verifique se é por falta de pagamento. Oriente a usar o botão 'PIX' na aba Faturas.`;
-      }
-    }
-
-    // Using gemini-3-flash-preview for general text tasks
-    const chat = ai.chats.create({
-      model: "gemini-3-flash-preview",
-      config: {
-        systemInstruction: systemContext,
-      },
-    });
-
-    setChatSession(chat);
-    hasInitialized.current = true;
-
-    // Initial Greeting
     setMessages([
       {
         id: "init",
@@ -103,7 +50,8 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
         timestamp: new Date(),
       },
     ]);
-  }, [clientName, dashboardData]);
+    hasInitialized.current = true;
+  }, [clientName]);
 
   // Proactive Alerts (Simulating Push)
   useEffect(() => {
@@ -166,7 +114,9 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
 
   const isOverdue = (dateString: string) => {
     if (!dateString) return false;
-    const [day, month, year] = dateString.split("/").map(Number);
+    const parts = dateString.split("/");
+    if (parts.length < 3) return false;
+    const [day, month, year] = parts.map(Number);
     const dueDate = new Date(year, month - 1, day);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -175,7 +125,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
 
   const handleSend = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!input.trim() || !chatSession) return;
+    if (!input.trim()) return;
 
     const userText = input;
     setInput("");
@@ -194,8 +144,8 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
     setIsTyping(true);
 
     try {
-      // Fix: sendMessage requires a message parameter
-      const result = await chatSession.sendMessage({ message: userText });
+      // Usando o novo método do apiService que bate no backend (OmniRoute)
+      const result = await apiService.sendChatMessage(userText);
       const responseText = result.text;
 
       setMessages((prev) => [
@@ -207,14 +157,14 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
           timestamp: new Date(),
         },
       ]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Chat Error", error);
       setMessages((prev) => [
         ...prev,
         {
           id: (Date.now() + 1).toString(),
           role: "model",
-          text: "Desculpe, tive um problema de conexão. Tente novamente em instantes.",
+          text: `Desculpe, tive um problema de comunicação: ${error.message || "Tente novamente em instantes."}`,
           timestamp: new Date(),
         },
       ]);

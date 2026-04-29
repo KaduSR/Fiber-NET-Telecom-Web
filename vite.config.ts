@@ -25,7 +25,7 @@ export default defineConfig({
     proxy: {
       "/api-proxy": {
         // Redirecionando para produção para evitar erros de conexão local
-        target: "https://api.centralfiber.online",
+        target: "http://localhost:3001",
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api-proxy/, ""),

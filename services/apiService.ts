@@ -311,6 +311,13 @@ async getContratoPdf(id: number): Promise<{base64_document: string}>{
     });
   }
 
+  async sendChatMessage(message: string): Promise<{ text: string }> {
+    return this.request<{ text: string }>("/chat", {
+      method: "POST",
+      body: JSON.stringify({ message }),
+    });
+  }
+
   // === UTILITÁRIOS ===
 
   private formatUptime(seconds: string | number): string {

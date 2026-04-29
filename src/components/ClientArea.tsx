@@ -2218,13 +2218,23 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                               </div>
                             </div>
                             <div className="flex items-center gap-3 w-full md:w-auto">
-                              {nota.link_pdf && (
+                              {nota.id && (
                                 <Button
                                   variant="outline"
                                   className="!py-2.5 !px-6 !text-xs gap-2 !rounded-xl border-white/10 hover:border-fiber-blue hover:text-fiber-blue transition-all"
-                                  onClick={() => window.open(nota.link_pdf, "_blank")}
+                                  onClick={async () => {
+                                    try {
+                                      const data = await apiService.imprimirNotaFiscal(nota.id);
+                                      if (data.base64_document) {
+                                        downloadBase64Pdf(data.base64_document, `NotaFiscal-${nota.numero_nota || nota.id}.pdf`);
+                                      }
+                                    } catch (err) {
+                                      console.error("Erro NF:", err);
+                                      alert("Não foi possível gerar a Nota Fiscal agora.");
+                                    }
+                                  }}
                                 >
-                                  <Download size={16} /> Visualizar PDF
+                                  <Printer size={16} /> Visualizar NF
                                 </Button>
                               )}
                             </div>
