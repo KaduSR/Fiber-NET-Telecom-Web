@@ -7,10 +7,9 @@ export const getApiBaseUrl = () => {
     return import.meta.env.VITE_API_BASE_URL;
   }
 
-  // 2. Modo Desenvolvimento (npm run dev)
-  if (import.meta.env.DEV) {
-    // Tenta usar o proxy local do Vite
-    return "/api-proxy/api";
+  // 2. Modo Desenvolvimento Local (Acesso via Localhost)
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return "http://localhost:3001/api";
   }
 
   // 3. Fallback Produção
