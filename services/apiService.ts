@@ -190,7 +190,7 @@ class ApiService {
     faturaId: string | number,
   ): Promise<{ qrcode: string; imagem: string }> {
     try {
-      const url = `/boletos/${faturaId}/pix`;
+      const url = ENDPOINTS.GET_PIX(faturaId);
       const response = await this.request<any>(url, { method: "GET" });
 
       return {
@@ -208,7 +208,7 @@ class ApiService {
     id: number | string,
   ): Promise<{ base64_document: string }> {
     // Aponta para a rota correta do seu backend
-    const url = `/boletos/${id}/segunda-via`;
+    const url = `/faturas/${id}/segunda-via`;
     return this.request<{ base64_document: string }>(url, {
       method: "GET",
     });

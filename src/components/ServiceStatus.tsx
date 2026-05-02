@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import QRCode from "react-qr-code"; // Biblioteca de geração
-import { API_BASE_URL } from "../../config"; // Certifique-se que o config exporta API_BASE_URL
+import { API_BASE_URL, ENDPOINTS } from "../../config"; // Certifique-se que o config exporta API_BASE_URL
 import { apiService } from "../../services/apiService";
 import { Fatura as DashboardFatura } from "../../types/api";
 import Button from "./Button";
@@ -149,7 +149,7 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
 
     try {
       // Usa a URL base do config
-      const response = await fetch(`${API_BASE_URL}/boletos/buscar-cpf`, {
+      const response = await fetch(`${API_BASE_URL}${ENDPOINTS.INVOICES}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cpfCnpj: numerosSomenente }),
@@ -235,7 +235,7 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
     try {
       setLoadingPixId(boleto.id);
       // Ajuste na rota para usar o endpoint correto do seu backend
-      const response = await fetch(`${API_BASE_URL}/boletos/${boleto.id}/pix`);
+      const response = await fetch(`${API_BASE_URL}${ENDPOINTS.GET_PIX(boleto.id)}`);
       const data = await response.json();
 
       // Verifica se retornou sucesso E o código pix

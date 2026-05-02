@@ -288,7 +288,7 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
     try {
       setLoadingPixId(boleto.id);
       // Ajuste na rota para usar o endpoint correto do seu backend
-      const response = await fetch(`${API_BASE_URL}/boletos/${boleto.id}/pix`);
+      const response = await fetch(`${API_BASE_URL}${ENDPOINTS.GET_PIX(boleto.id)}`);
       const data = await response.json();
 
       // Verifica se retornou sucesso E o código pix

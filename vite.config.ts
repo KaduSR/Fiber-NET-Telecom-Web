@@ -24,7 +24,7 @@ export default defineConfig({
     host: true,
     proxy: {
       "/api-proxy": {
-        // Redirecionando para produção para evitar erros de conexão local
+        // Redirecionando para a API local (porta 3001) para testes
         target: "http://localhost:3001",
         changeOrigin: true,
         secure: false,

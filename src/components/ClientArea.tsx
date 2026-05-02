@@ -38,7 +38,7 @@ import {
 } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { apiService } from "../../services/apiService";
-import { API_BASE_URL } from "../config";
+import { API_BASE_URL, ENDPOINTS } from "../config";
 
 import { Consumo, DashboardResponse } from "../../types/api";
 import { handlePdfBase64 } from "../../utils/pdfHelpers";
@@ -885,7 +885,7 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
 
     try {
       setLoadingPixId(boleto.id);
-      const response = await fetch(`${API_BASE_URL}/boletos/${boleto.id}/pix`);
+      const response = await fetch(`${API_BASE_URL}${ENDPOINTS.GET_PIX(boleto.id)}`);
       const data = await response.json();
 
       if (
