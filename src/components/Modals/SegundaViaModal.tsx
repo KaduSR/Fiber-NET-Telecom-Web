@@ -92,7 +92,7 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
           pixCopiaECola: fatura.pix_code || null,
           boleto_pdf_link: fatura.boleto || null,
           status:
-            fatura.status === "A"
+            fatura.status === "aberto"
               ? "Aberto"
               : fatura.status === "V"
                 ? "Vencido"
@@ -186,7 +186,7 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
         // 🔥 CORREÇÃO 1: Filtrar apenas boletos Abertos (A) ou Parciais (P)
         // Removemos "R" (Recebido/Pago) e "C" (Cancelado) da visualização pública
         const boletosFiltrados = data.boletos.filter(
-          (b: any) => b.status === "A" || b.status === "P",
+          (b: any) => b.status === "aberto" || b.status === "P",
         );
 
         if (boletosFiltrados.length === 0) {
@@ -489,7 +489,7 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
                           </p>
                           {/* Mostra dias de atraso se vencido */}
                           {boleto.diasVencimento < 0 &&
-                            boleto.status === "A" && (
+                            boleto.status === "aberto" && (
                               <span className="text-[10px] bg-red-500/10 text-red-500 px-1.5 py-0.5 rounded border border-red-500/20">
                                 {Math.abs(boleto.diasVencimento)} dias atrasado
                               </span>

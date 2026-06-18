@@ -59,7 +59,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
 
     const checkForAlerts = () => {
       const faturasVencidas = dashboardData.faturas.filter(
-        (f) => f.status === "A" && isOverdue(f.data_vencimento)
+        (f) => f.status === "aberto" && isOverdue(f.data_vencimento)
       );
       const conexaoOffline = dashboardData.logins.some((l) => l.online === "N");
 

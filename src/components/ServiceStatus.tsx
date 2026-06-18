@@ -84,7 +84,7 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
           pixCopiaECola: fatura.pix_code || null,
           boleto_pdf_link: fatura.boleto || null,
           status:
-            fatura.status === "A"
+            fatura.status === "aberto"
               ? "Aberto"
               : fatura.status === "V"
                 ? "Vencido"
