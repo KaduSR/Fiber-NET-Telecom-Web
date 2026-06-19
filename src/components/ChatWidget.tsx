@@ -58,9 +58,10 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
     if (!dashboardData) return;
 
     const checkForAlerts = () => {
-      const faturasVencidas = dashboardData.faturas.filter(
-        (f) => f.status === "aberto" && isOverdue(f.data_vencimento)
-      );
+      const faturasVencidas = dashboardData.faturas.filter((f) => {
+        const status = String(f.status ?? "").trim().toLowerCase();
+        return ["a", "aberto", "open", "pending"].includes(status) && isOverdue(f.data_vencimento);
+      });
       const conexaoOffline = dashboardData.logins.some((l) => l.online === "N");
 
       // Alert: Connection Issue

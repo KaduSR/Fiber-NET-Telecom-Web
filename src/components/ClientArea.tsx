@@ -42,6 +42,14 @@ import { API_BASE_URL, ENDPOINTS } from "../config";
 
 import { Consumo, DashboardResponse } from "../../types/api";
 import { handlePdfBase64 } from "../../utils/pdfHelpers";
+import {
+  getStatusColor,
+  isOpenInvoice,
+  isPaidInvoice,
+  isCanceledInvoice,
+  normalizeInvoiceStatus,
+  calculateEstimate,
+} from "../../utils/helpers";
 import AIInsights from "./AIInsights";
 import Button from "./Button";
 import NewTicketModal from "./Modals/NewTicketModal";
@@ -68,6 +76,16 @@ interface BoletoView {
 
 const bytesToGB = (bytes: number) => {
   return parseFloat((bytes / (1024 * 1024 * 1024)).toFixed(2));
+};
+
+const getStatusText = (status: string) => {
+  const s = String(status ?? "").trim().toLowerCase();
+  if (["a", "ativo"].includes(s)) return "Ativo";
+  if (["i", "inativo"].includes(s)) return "Inativo";
+  if (["s", "suspenso"].includes(s)) return "Suspenso";
+  if (["c", "cancelado"].includes(s)) return "Cancelado";
+  if (["b", "bloqueado"].includes(s)) return "Bloqueado";
+  return status || "Indefinido";
 };
 
 const downloadBase64Pdf = (base64Data: string, fileName: string) => {
@@ -328,7 +346,7 @@ const InvoiceItem: React.FC<{
         : Number(fatura.valor);
 
     const estimativa =
-      fatura.status === "aberto"
+      isOpenInvoice(fatura.status)
         ? calcularEstimativa(valorNum, fatura.data_vencimento)
         : null;
 
@@ -349,7 +367,7 @@ const InvoiceItem: React.FC<{
     return (
       <div
         key={fatura.id}
-        className={`flex flex-col md:flex-row justify-between items-center bg-neutral-900 p-5 rounded-2xl border-l-4 hover:bg-white/5 transition-all gap-6 ${fatura.status === "aberto" ? "border-fiber-orange" : "border-fiber-green"
+        className={`flex flex-col md:flex-row justify-between items-center bg-neutral-900 p-5 rounded-2xl border-l-4 hover:bg-white/5 transition-all gap-6 ${isOpenInvoice(fatura.status) ? "border-fiber-orange" : "border-fiber-green"
           }`}
       >
         <div className="flex-1 w-full">
@@ -360,7 +378,7 @@ const InvoiceItem: React.FC<{
                 minimumFractionDigits: 2,
               })}
             </p>
-            {fatura.status === "aberto" ? (
+            {isOpenInvoice(fatura.status) ? (
               dias < 0 ? (
                 <span className="bg-red-500/20 text-red-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase border border-red-500/30">
                   Atrasada
@@ -382,7 +400,7 @@ const InvoiceItem: React.FC<{
               ? fatura.data_vencimento.split("-").reverse().join("/")
               : "N/A"}
           </p>
-          {fatura.status === "aberto" && (
+          {isOpenInvoice(fatura.status) && (
             <p className="text-xs font-bold mt-1">
               {dias < 0 ? (
                 <span className="text-red-400">
@@ -420,7 +438,7 @@ const InvoiceItem: React.FC<{
         </div>
 
         <div className="flex md:flex-col lg:flex-row gap-2 w-full md:w-auto">
-          {fatura.status === "aberto" && (
+          {isOpenInvoice(fatura.status) && (
             <>
               <Button
                 onClick={() =>
@@ -781,7 +799,7 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
 
     if (dashboardData?.faturas) {
       const faturasPendentes = dashboardData.faturas
-        .filter((f) => f.status === "aberto")
+        .filter((f) => isOpenInvoice(f.status))
         .sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento));
 
       if (faturasPendentes.length > 0) {
@@ -931,7 +949,7 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
   };
 
   const faturasAbertas =
-    dashboardData?.faturas.filter((f) => f.status === "aberto").length || 0;
+    dashboardData?.faturas.filter((f) => isOpenInvoice(f.status)).length || 0;
 
   const TABS = [
     { id: "dashboard", label: "Visão Geral", icon: LayoutDashboard },
@@ -1151,7 +1169,7 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
 
   const totalGeralDivida = (dashboardData?.faturas || [])
     .filter((f) => {
-      if (f.status !== "A") return false;
+      if (!isOpenInvoice(f.status)) return false;
       const dateStr = String(f.data_vencimento);
       // Normaliza para ISO (YYYY-MM-DD) ao adicionar horário fixo para evitar
       // problemas de fuso horário ao comparar apenas a data.
@@ -1413,7 +1431,7 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                             // Ascendente: mais atual → futuro (vencimento mais próximo primeiro)
                             const dateComp = (a.data_vencimento || "").localeCompare(b.data_vencimento || "");
                             if (dateComp !== 0) return dateComp;
-                            return a.status === "aberto" ? -1 : 1;
+                            return isOpenInvoice(a.status) ? -1 : 1;
                           })
                           .forEach(f => {
                             if (!datasVistas.has(f.data_vencimento)) {
@@ -1427,7 +1445,7 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                           return (
                             <div key={fatura.id} className="bg-black/40 border border-white/5 rounded-2xl p-5 flex flex-col md:flex-row justify-between items-center gap-4 hover:bg-white/5 transition-all">
                               <div className="flex items-center gap-4 flex-1">
-                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${fatura.status === "P" ? "bg-fiber-green/10 text-fiber-green" : "bg-fiber-orange/10 text-fiber-orange"}`}>
+                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isPaidInvoice(fatura.status) ? "bg-fiber-green/10 text-fiber-green" : "bg-fiber-orange/10 text-fiber-orange"}`}>
                                   <FileText size={22} />
                                 </div>
                                 <div>
@@ -1436,8 +1454,8 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                                 </div>
                               </div>
                               <div className="flex items-center gap-3">
-                                <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase border ${fatura.status === "P" ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-fiber-orange/10 text-fiber-orange border-fiber-orange/20"}`}>
-                                  {fatura.status === "P" ? "Liquidada" : "Pendente"}
+                                <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase border ${isPaidInvoice(fatura.status) ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-fiber-orange/10 text-fiber-orange border-fiber-orange/20"}`}>
+                                  {isPaidInvoice(fatura.status) ? "Liquidada" : "Pendente"}
                                 </span>
                                 {fatura.status !== "P" && (
                                   <button
@@ -1505,9 +1523,9 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                         <p className="text-xl font-black text-white text-center">
                           {(() => {
                             const faturas = (dashboardData?.faturas || []).filter(f => {
-                              if (f.status === "C") return false;
-                              if (invoiceStatusFilter === "aberto") return f.status === "aberto";
-                              if (invoiceStatusFilter === "pago") return f.status === "P" || f.status === "R";
+                              if (isCanceledInvoice(f.status)) return false;
+                              if (invoiceStatusFilter === "aberto") return isOpenInvoice(f.status);
+                              if (invoiceStatusFilter === "pago") return isPaidInvoice(f.status);
                               return true;
                             });
                             const uniqueDates = new Set(faturas.map(f => f.data_vencimento));
@@ -1520,9 +1538,9 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                     <div className="p-4 md:p-8 space-y-4 bg-black/20">
                       {(() => {
                         const faturasFiltradas = (dashboardData?.faturas || []).filter(f => {
-                          if (f.status === "C") return false;
-                          if (invoiceStatusFilter === "aberto") return f.status === "aberto";
-                          if (invoiceStatusFilter === "pago") return f.status === "P" || f.status === "R";
+                          if (isCanceledInvoice(f.status)) return false;
+                          if (invoiceStatusFilter === "aberto") return isOpenInvoice(f.status);
+                          if (invoiceStatusFilter === "pago") return isPaidInvoice(f.status);
                           return false;
                         });
 
@@ -1534,7 +1552,7 @@ const ClientArea: React.FC<ClientAreaProps> = ({ onNavigate }) => {
                             // Ascendente: mais atual → futuro (vencimento mais próximo primeiro)
                             const dateComp = (a.data_vencimento || "").localeCompare(b.data_vencimento || "");
                             if (dateComp !== 0) return dateComp;
-                            return a.status === "aberto" ? -1 : 1;
+                            return isOpenInvoice(a.status) ? -1 : 1;
                           })
                           .forEach(f => {
                             if (!datasVistas.has(f.data_vencimento)) {

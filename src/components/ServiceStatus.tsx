@@ -8,10 +8,11 @@ import {
   Download,
   FileText,
   Loader2,
-  QrCode as QrCodeIcon, // Renomeado para não conflitar com a lib
+  QrCode as QrCodeIcon,
   Search,
   X,
 } from "lucide-react";
+import { getStatusColor } from "../../utils/helpers";
 import React, { useEffect, useState } from "react";
 import QRCode from "react-qr-code"; // Biblioteca de geração
 import { API_BASE_URL, ENDPOINTS } from "../../config"; // Certifique-se que o config exporta API_BASE_URL
@@ -70,12 +71,12 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
     if (isOpen) {
       if (fatura) {
         // MODO CLIENTE: Converte a fatura recebida para o formato de visualização
+        const dateStr = fatura.data_vencimento || "";
+        const safeDateStr = dateStr.includes("T") ? dateStr : dateStr + "T12:00:00";
         const faturaAdaptada: BoletoView = {
           id: fatura.id,
           documento: fatura.documento || `Fat-${fatura.id}`,
-          vencimentoFormatado: new Date(
-            fatura.data_vencimento,
-          ).toLocaleDateString("pt-BR"),
+          vencimentoFormatado: new Date(safeDateStr).toLocaleDateString("pt-BR"),
           valorFormatado: parseFloat(fatura.valor).toLocaleString("pt-BR", {
             style: "currency",
             currency: "BRL",
@@ -84,11 +85,17 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
           pixCopiaECola: fatura.pix_code || null,
           boleto_pdf_link: fatura.boleto || null,
           status:
-            fatura.status === "aberto"
+            ["a", "aberto", "open", "pending"].includes(
+              String(fatura.status ?? "").trim().toLowerCase(),
+            )
               ? "Aberto"
               : fatura.status === "V"
                 ? "Vencido"
-                : fatura.status,
+                : ["p", "r", "pago", "recebido", "liquidado", "liquidada"].includes(
+                    String(fatura.status ?? "").trim().toLowerCase(),
+                  )
+                  ? "Pago"
+                  : fatura.status,
           diasVencimento: 0, // Cálculo simplificado ou vindo do backend
           clienteNome: "", // Não necessário na área logada
         };
