@@ -17,6 +17,7 @@ import { API_BASE_URL, ENDPOINTS } from "../../../config";
 import { apiService } from "../../../services/apiService";
 import { Fatura as DashboardFatura } from "../../../types/api";
 import Button from "../Button";
+import { getStatusColor } from "../../../utils/helpers";
 
 interface SegundaViaModalProps {
   isOpen: boolean;
@@ -68,7 +69,9 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       if (fatura) {
-        const dataVencimento = new Date(fatura.data_vencimento);
+        const dateStr = fatura.data_vencimento || "";
+        const safeDateStr = dateStr.includes("T") ? dateStr : dateStr + "T12:00:00";
+        const dataVencimento = new Date(safeDateStr);
         const hoje = new Date();
         const diffTempo = dataVencimento.getTime() - hoje.getTime();
         const diasDiff = Math.ceil(diffTempo / (1000 * 60 * 60 * 24));
@@ -92,11 +95,15 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
           pixCopiaECola: fatura.pix_code || null,
           boleto_pdf_link: fatura.boleto || null,
           status:
-            fatura.status === "A"
+            ["a", "aberto", "open", "pending"].includes(
+              String(fatura.status ?? "").trim().toLowerCase(),
+            )
               ? "Aberto"
               : fatura.status === "V"
                 ? "Vencido"
-                : fatura.status === "P" || fatura.status === "R" // Mapeia Pagos
+                : ["p", "r", "pago", "recebido", "liquidado", "liquidada"].includes(
+                    String(fatura.status ?? "").trim().toLowerCase(),
+                  )
                   ? "Pago"
                   : fatura.status,
 
@@ -185,9 +192,10 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
       if (data.boletos && data.boletos.length > 0) {
         // 🔥 CORREÇÃO 1: Filtrar apenas boletos Abertos (A) ou Parciais (P)
         // Removemos "R" (Recebido/Pago) e "C" (Cancelado) da visualização pública
-        const boletosFiltrados = data.boletos.filter(
-          (b: any) => b.status === "A" || b.status === "P",
-        );
+        const boletosFiltrados = data.boletos.filter((b: any) => {
+          const status = String(b.status ?? "").trim().toLowerCase();
+          return ["a", "aberto", "p", "pending"].includes(status);
+        });
 
         if (boletosFiltrados.length === 0) {
           setError("Nenhuma fatura pendente encontrada para este CPF/CNPJ.");
@@ -313,19 +321,6 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
       alert("Erro ao conectar servidor para gerar Pix.");
     } finally {
       setLoadingPixId(null);
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Vencido":
-        return "text-red-400 bg-red-400/10 border-red-400/20";
-      case "Vence Hoje":
-        return "text-orange-400 bg-orange-400/10 border-orange-400/20";
-      case "A Vencer":
-        return "text-yellow-400 bg-yellow-400/10 border-yellow-400/20";
-      default:
-        return "text-green-400 bg-green-400/10 border-green-400/20";
     }
   };
 
@@ -489,7 +484,7 @@ const SegundaViaModal: React.FC<SegundaViaModalProps> = ({
                           </p>
                           {/* Mostra dias de atraso se vencido */}
                           {boleto.diasVencimento < 0 &&
-                            boleto.status === "A" && (
+                            boleto.status === "aberto" && (
                               <span className="text-[10px] bg-red-500/10 text-red-500 px-1.5 py-0.5 rounded border border-red-500/20">
                                 {Math.abs(boleto.diasVencimento)} dias atrasado
                               </span>

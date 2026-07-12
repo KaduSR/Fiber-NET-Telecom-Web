@@ -71,7 +71,7 @@ export interface Login {
 export interface ContratoInfo {
     id: string | number;
     plano: string;
-    status: 'A' | 'S' | 'C'; // Ativo, Suspenso, Cancelado
+    status: 'ativo' | 'inativo' | 'cancelado' | 'bloqueado' | 'aguardando_assinatura' | 'pre_contrato' | string;
     pdf_link?: string;
     pago_ate?: string;
     data_contrato?: string;
