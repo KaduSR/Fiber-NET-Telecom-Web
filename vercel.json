@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api-proxy/:path*",
-      "destination": "https://api.centralfiber.online/:path*"
+      "destination": "https://backend.fibernettelecom.com/api/:path*"
     },
     {
       "source": "/(.*)",

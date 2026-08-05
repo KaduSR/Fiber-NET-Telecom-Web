@@ -2,12 +2,9 @@
 // spell: disable
 
 export const getApiBaseUrl = () => {
-  // Prioriza local se estiver rodando em localhost
-  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-     return "http://localhost:3001/api";
-  }
-
-  return "https://api.centralfiber.online/api";
+  // Em desenvolvimento e produção, usa o proxy /api-proxy
+  // O Vite (dev) e Vercel (prod) farão o redirect para backend.fibernettelecom.com
+  return "/api-proxy";
 };
 
 export const API_BASE_URL = getApiBaseUrl();

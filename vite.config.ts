@@ -24,11 +24,11 @@ export default defineConfig({
     host: true,
     proxy: {
       "/api-proxy": {
-        // Redirecionando para a API local (porta 3001) para testes
-        target: "http://localhost:3001",
+        // Redirecionando para o backend
+        target: "https://backend.fibernettelecom.com",
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/^\/api-proxy/, ""),
+        rewrite: (path) => path.replace(/^\/api-proxy/, "/api"),
       },
     },
   },
