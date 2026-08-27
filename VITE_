@@ -1,1 +1,1 @@
-VITE_WS_URL=ws:https://api.centralfiber.online/api
+VITE_WS_URL=ws:https://ixc-rest-api-gateway-kadusrs-projects.vercel.app/api
